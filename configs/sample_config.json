@@ -1,0 +1,108 @@
+{
+  "profile_name": "lagrange_private_server_sample",
+  "dry_run_default": true,
+  "loop_interval_seconds": 0.35,
+  "global_click_delay_seconds": 0.08,
+  "matcher": {
+    "card_threshold": 0.82,
+    "skill_threshold": 0.82,
+    "digit_threshold": 0.78
+  },
+  "screen": {
+    "capture_rect": null
+  },
+  "cost": {
+    "mode": "debug_fixed",
+    "debug_fixed_value": 120,
+    "manual_file": "screenshots/current_cost.txt",
+    "rect": [940, 1010, 90, 36],
+    "digit_templates_dir": "templates/digits"
+  },
+  "phase": {
+    "mode": "time",
+    "placement_seconds": 120,
+    "extra_place_seconds": 10
+  },
+  "slots": {
+    "hand": [
+      {"name": "hand_1", "rect": [620, 850, 130, 180], "click": [685, 940]},
+      {"name": "hand_2", "rect": [770, 850, 130, 180], "click": [835, 940]},
+      {"name": "hand_3", "rect": [920, 850, 130, 180], "click": [985, 940]},
+      {"name": "hand_4", "rect": [1070, 850, 130, 180], "click": [1135, 940]}
+    ],
+    "reserve": {"name": "reserve", "rect": [1220, 870, 105, 145], "click": [1272, 940]}
+  },
+  "skills": [
+    {
+      "id": "skill_focus_fire",
+      "name": "Focus Fire",
+      "active": true,
+      "cooldown_seconds": 25,
+      "template": "templates/skills/skill_focus_fire.png",
+      "rect": [1450, 850, 90, 90],
+      "click": [1495, 895],
+      "target_mode": "none",
+      "priority": 100,
+      "conditions": {
+        "after_seconds": 0
+      }
+    },
+    {
+      "id": "skill_passive_1",
+      "name": "Passive 1",
+      "active": false,
+      "cooldown_seconds": 0,
+      "template": null,
+      "rect": null,
+      "click": null,
+      "target_mode": "passive",
+      "priority": 0,
+      "conditions": {}
+    }
+  ],
+  "cards": [
+    {
+      "id": "front_tank",
+      "name": "Front Tank",
+      "cost": 40,
+      "row": "front",
+      "template": "templates/cards/front_tank.png",
+      "priority": 100,
+      "max_plays": 2,
+      "conditions": {
+        "after_seconds": 0
+      }
+    },
+    {
+      "id": "middle_damage",
+      "name": "Middle Damage",
+      "cost": 55,
+      "row": "middle",
+      "template": "templates/cards/middle_damage.png",
+      "priority": 80,
+      "max_plays": 99,
+      "conditions": {
+        "requires_played_any": ["front_tank"]
+      }
+    },
+    {
+      "id": "back_support",
+      "name": "Back Support",
+      "cost": 35,
+      "row": "back",
+      "template": "templates/cards/back_support.png",
+      "priority": 60,
+      "max_plays": 1,
+      "conditions": {
+        "before_seconds": 130
+      }
+    }
+  ],
+  "policy": {
+    "min_cost_to_act": 0,
+    "prefer_higher_cost_when_priority_ties": true,
+    "wait_for_high_priority_affordable_seconds": 3.0,
+    "opening_sequence": ["front_tank", "middle_damage"],
+    "fallback": "play_highest_priority_affordable"
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "source": "selected_from_text_core_templates",
+  "backup": "templates/card_titles_live_current_full_20260609_165113",
+  "threshold": 0.9,
+  "counts": {
+    "carlilion": 2,
+    "cas066": 3,
+    "eris": 3,
+    "fg300_armor": 3,
+    "rainsea_assault": 3,
+    "reliat": 2,
+    "stingray": 3,
+    "tundra_support": 3
+  },
+  "items": [
+    {
+      "card_id": "carlilion",
+      "source_template": "carlilion_01.png",
+      "path": "templates\\card_titles_live_current\\carlilion_01.png"
+    },
+    {
+      "card_id": "carlilion",
+      "source_template": "carlilion_06.png",
+      "path": "templates\\card_titles_live_current\\carlilion_02.png"
+    },
+    {
+      "card_id": "cas066",
+      "source_template": "cas066_01.png",
+      "path": "templates\\card_titles_live_current\\cas066_01.png"
+    },
+    {
+      "card_id": "cas066",
+      "source_template": "cas066_02.png",
+      "path": "templates\\card_titles_live_current\\cas066_02.png"
+    },
+    {
+      "card_id": "cas066",
+      "source_template": "cas066_04.png",
+      "path": "templates\\card_titles_live_current\\cas066_03.png"
+    },
+    {
+      "card_id": "eris",
+      "source_template": "eris_02.png",
+      "path": "templates\\card_titles_live_current\\eris_01.png"
+    },
+    {
+      "card_id": "eris",
+      "source_template": "eris_01.png",
+      "path": "templates\\card_titles_live_current\\eris_02.png"
+    },
+    {
+      "card_id": "eris",
+      "source_template": "eris_04.png",
+      "path": "templates\\card_titles_live_current\\eris_03.png"
+    },
+    {
+      "card_id": "fg300_armor",
+      "source_template": "fg300_armor_01.png",
+      "path": "templates\\card_titles_live_current\\fg300_armor_01.png"
+    },
+    {
+      "card_id": "fg300_armor",
+      "source_template": "fg300_armor_07.png",
+      "path": "templates\\card_titles_live_current\\fg300_armor_02.png"
+    },
+    {
+      "card_id": "fg300_armor",
+      "source_template": "fg300_armor_09.png",
+      "path": "templates\\card_titles_live_current\\fg300_armor_03.png"
+    },
+    {
+      "card_id": "rainsea_assault",
+      "source_template": "rainsea_assault_01.png",
+      "path": "templates\\card_titles_live_current\\rainsea_assault_01.png"
+    },
+    {
+      "card_id": "rainsea_assault",
+      "source_template": "rainsea_assault_02.png",
+      "path": "templates\\card_titles_live_current\\rainsea_assault_02.png"
+    },
+    {
+      "card_id": "rainsea_assault",
+      "source_template": "rainsea_assault_07.png",
+      "path": "templates\\card_titles_live_current\\rainsea_assault_03.png"
+    },
+    {
+      "card_id": "reliat",
+      "source_template": "reliat_01.png",
+      "path": "templates\\card_titles_live_current\\reliat_01.png"
+    },
+    {
+      "card_id": "reliat",
+      "source_template": "reliat_03.png",
+      "path": "templates\\card_titles_live_current\\reliat_02.png"
+    },
+    {
+      "card_id": "stingray",
+      "source_template": "stingray_02.png",
+      "path": "templates\\card_titles_live_current\\stingray_01.png"
+    },
+    {
+      "card_id": "stingray",
+      "source_template": "stingray_01.png",
+      "path": "templates\\card_titles_live_current\\stingray_02.png"
+    },
+    {
+      "card_id": "stingray",
+      "source_template": "stingray_06.png",
+      "path": "templates\\card_titles_live_current\\stingray_03.png"
+    },
+    {
+      "card_id": "tundra_support",
+      "source_template": "tundra_support_01.png",
+      "path": "templates\\card_titles_live_current\\tundra_support_01.png"
+    },
+    {
+      "card_id": "tundra_support",
+      "source_template": "tundra_support_02.png",
+      "path": "templates\\card_titles_live_current\\tundra_support_02.png"
+    },
+    {
+      "card_id": "tundra_support",
+      "source_template": "tundra_support_04.png",
+      "path": "templates\\card_titles_live_current\\tundra_support_03.png"
+    }
+  ],
+  "selection_notes": "Greedy selected subset from the full text-core template set to reduce matching cost while preserving coverage of reviewed current/previous samples."
+}

@@ -1,0 +1,1057 @@
+{
+  "source": "manual_reviewed_live_hand_collections",
+  "notes": "Text-core title templates cropped to 102x24 from the configured 160x30 title rect. This avoids left rarity triangles and right cost/overlay UI, allowing matchTemplate to slide across hand-slot horizontal differences.",
+  "threshold": 0.9,
+  "counts": {
+    "tundra_support": 5,
+    "fg300_armor": 9,
+    "eris": 4,
+    "carlilion": 6,
+    "reliat": 8,
+    "rainsea_assault": 7,
+    "stingray": 8,
+    "cas066": 5
+  },
+  "items": [
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 1,
+      "slot": "hand_1",
+      "card_id": "tundra_support",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\tundra_support_01.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 1,
+      "slot": "hand_2",
+      "card_id": "fg300_armor",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\fg300_armor_01.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 1,
+      "slot": "hand_3",
+      "card_id": "eris",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\eris_01.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 1,
+      "slot": "hand_4",
+      "card_id": "carlilion",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\carlilion_01.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 8,
+      "slot": "hand_1",
+      "card_id": "tundra_support",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\tundra_support_02.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 8,
+      "slot": "hand_2",
+      "card_id": "fg300_armor",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\fg300_armor_02.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 8,
+      "slot": "hand_3",
+      "card_id": "eris",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\eris_02.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 8,
+      "slot": "hand_4",
+      "card_id": "carlilion",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\carlilion_02.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 16,
+      "slot": "hand_1",
+      "card_id": "tundra_support",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\tundra_support_03.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 16,
+      "slot": "hand_2",
+      "card_id": "fg300_armor",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\fg300_armor_03.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 16,
+      "slot": "hand_3",
+      "card_id": "reliat",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\reliat_01.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 16,
+      "slot": "hand_4",
+      "card_id": "carlilion",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\carlilion_03.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 24,
+      "slot": "hand_1",
+      "card_id": "tundra_support",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\tundra_support_04.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 24,
+      "slot": "hand_2",
+      "card_id": "fg300_armor",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\fg300_armor_04.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 24,
+      "slot": "hand_3",
+      "card_id": "reliat",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\reliat_02.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 24,
+      "slot": "hand_4",
+      "card_id": "rainsea_assault",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\rainsea_assault_01.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 32,
+      "slot": "hand_1",
+      "card_id": "stingray",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\stingray_01.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 32,
+      "slot": "hand_2",
+      "card_id": "fg300_armor",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\fg300_armor_05.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 32,
+      "slot": "hand_3",
+      "card_id": "reliat",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\reliat_03.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 32,
+      "slot": "hand_4",
+      "card_id": "rainsea_assault",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\rainsea_assault_02.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 36,
+      "slot": "hand_1",
+      "card_id": "stingray",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\stingray_02.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 36,
+      "slot": "hand_2",
+      "card_id": "fg300_armor",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\fg300_armor_06.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 36,
+      "slot": "hand_3",
+      "card_id": "reliat",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\reliat_04.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 36,
+      "slot": "hand_4",
+      "card_id": "rainsea_assault",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\rainsea_assault_03.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 40,
+      "slot": "hand_1",
+      "card_id": "stingray",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\stingray_03.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 40,
+      "slot": "hand_2",
+      "card_id": "cas066",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\cas066_01.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 40,
+      "slot": "hand_3",
+      "card_id": "reliat",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\reliat_05.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 40,
+      "slot": "hand_4",
+      "card_id": "rainsea_assault",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\rainsea_assault_04.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 49,
+      "slot": "hand_1",
+      "card_id": "stingray",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\stingray_04.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 49,
+      "slot": "hand_2",
+      "card_id": "cas066",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\cas066_02.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 49,
+      "slot": "hand_3",
+      "card_id": "reliat",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\reliat_06.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 49,
+      "slot": "hand_4",
+      "card_id": "rainsea_assault",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\rainsea_assault_05.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 53,
+      "slot": "hand_1",
+      "card_id": "stingray",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\stingray_05.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 53,
+      "slot": "hand_2",
+      "card_id": "cas066",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\cas066_03.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 53,
+      "slot": "hand_3",
+      "card_id": "eris",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\eris_03.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_163314_841654",
+      "frame": 53,
+      "slot": "hand_4",
+      "card_id": "rainsea_assault",
+      "note": "latest_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\rainsea_assault_06.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 1,
+      "slot": "hand_1",
+      "card_id": "fg300_armor",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\fg300_armor_07.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 1,
+      "slot": "hand_2",
+      "card_id": "stingray",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\stingray_06.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 1,
+      "slot": "hand_3",
+      "card_id": "reliat",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\reliat_07.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 1,
+      "slot": "hand_4",
+      "card_id": "carlilion",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\carlilion_04.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 20,
+      "slot": "hand_1",
+      "card_id": "cas066",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\cas066_04.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 20,
+      "slot": "hand_2",
+      "card_id": "stingray",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\stingray_07.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 20,
+      "slot": "hand_3",
+      "card_id": "reliat",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\reliat_08.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 20,
+      "slot": "hand_4",
+      "card_id": "eris",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\eris_04.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 30,
+      "slot": "hand_1",
+      "card_id": "tundra_support",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\tundra_support_05.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 30,
+      "slot": "hand_2",
+      "card_id": "carlilion",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\carlilion_05.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 30,
+      "slot": "hand_3",
+      "card_id": "fg300_armor",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\fg300_armor_08.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 30,
+      "slot": "hand_4",
+      "card_id": "rainsea_assault",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\rainsea_assault_07.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 42,
+      "slot": "hand_1",
+      "card_id": "cas066",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        556,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\cas066_05.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 42,
+      "slot": "hand_2",
+      "card_id": "carlilion",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        784,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\carlilion_06.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 42,
+      "slot": "hand_3",
+      "card_id": "fg300_armor",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        1002,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\fg300_armor_09.png"
+    },
+    {
+      "collection": "training_samples/hand_live_20260609_161106_382226",
+      "frame": 42,
+      "slot": "hand_4",
+      "card_id": "stingray",
+      "note": "previous_reviewed_text_core",
+      "title_rect": [
+        1229,
+        941,
+        160,
+        30
+      ],
+      "template_core_rect": [
+        28,
+        3,
+        102,
+        24
+      ],
+      "path": "templates\\card_titles_live_current\\stingray_08.png"
+    }
+  ]
+}

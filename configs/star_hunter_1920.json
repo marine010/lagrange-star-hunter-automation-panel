@@ -1,0 +1,536 @@
+{
+  "profile_name": "star_hunter_1920_window",
+  "dry_run_default": true,
+  "loop_interval_seconds": 0.25,
+  "global_click_delay_seconds": 0.08,
+  "matcher": {
+    "card_threshold": 0.82,
+    "card_title_threshold": 0.9,
+    "card_title_live_templates_dir": "templates/card_titles_live_current",
+    "card_title_templates_dir": "",
+    "skill_threshold": 0.82,
+    "digit_threshold": 0.78,
+    "battlefield_threshold": 0.8,
+    "skill_ready_max_dark_ratio": 0.55,
+    "skill_ready_min_brightness": 45,
+    "playable_card_min_brightness": 90,
+    "playable_card_min_bright_ratio": 0.35,
+    "playable_card_min_yellow_ratio": 0.04,
+    "card_title_offset_x": 14,
+    "card_title_offset_y": 12,
+    "card_title_width": 160,
+    "card_title_height": 30
+  },
+  "screen": {
+    "capture_rect": null,
+    "capture_backend": "wgc",
+    "reference_size": [
+      1920,
+      1080
+    ],
+    "window_title_contains": "星际猎人",
+    "capture_expand_top_pixels": 0,
+    "capture_settle_after_move_seconds": 0.05,
+    "wgc_frame_timeout_seconds": 3.0,
+    "wgc_minimum_update_interval_ms": 50,
+    "continuous_target_frame_ms": 250,
+    "continuous_min_delay_ms": 20,
+    "continuous_max_delay_ms": 250,
+    "continuous_save_images": false,
+    "continuous_save_every_n": 0,
+    "continuous_allow_inline_training": false,
+    "continuous_preview_every_n": 1,
+    "live_play_card_min_interval_seconds": 0.9,
+    "live_skill_min_interval_seconds": 1.0,
+    "live_skill_click_delay_seconds": 0.5,
+    "live_skill_confirm_timeout_seconds": 2.8,
+    "live_skill_refresh_target_before_click": true,
+    "opening_zoom_enabled": true,
+    "opening_zoom_trigger_seconds": 10,
+    "opening_zoom_trigger_until_seconds": 45,
+    "opening_zoom_duration_seconds": 10,
+    "opening_zoom_scroll_amount": -120,
+    "opening_zoom_interval_ms": 25,
+    "layout_offset_fast_reuse": true,
+    "layout_offset_min_switch_score": 1.2,
+    "card_match_cache": true,
+    "hand_card_read_interval_seconds": 2.0,
+    "hand_card_read_interval_frames": 0,
+    "card_full_match_fallback": false,
+    "read_reserve": false,
+    "layout_offset_y_candidates": [
+      34,
+      0,
+      55,
+      -55,
+      10,
+      -10
+    ],
+    "notes": "Coordinates are based on a 1920x1080 client area. Window captures use physical pixels after enabling DPI awareness.",
+    "layout_offset_y_fixed": 34
+  },
+  "cost": {
+    "mode": "command_value",
+    "debug_fixed_value": 120,
+    "manual_file": "screenshots/current_cost.txt",
+    "rect": [
+      515,
+      888,
+      220,
+      48
+    ],
+    "number_rect": [
+      630,
+      890,
+      70,
+      36
+    ],
+    "digit_templates_dir": "templates/digits",
+    "command_digits_dir": "templates/command_digits"
+  },
+  "phase": {
+    "mode": "time",
+    "read_screen_timer": true,
+    "timer_digits_dir": "templates/timer_digits_clean",
+    "timer_ocr_interval_seconds": 0.5,
+    "timer_stable_max_lag_seconds": 0.75,
+    "timer_stable_max_lead_seconds": 0.75,
+    "timer_max_extrapolate_seconds": 1.0,
+    "timer_extra_candidates": false,
+    "timer_rect": [
+      912,
+      20,
+      93,
+      30
+    ],
+    "timer_rects": [
+      [
+        912,
+        20,
+        93,
+        30
+      ],
+      [
+        727,
+        20,
+        93,
+        30
+      ]
+    ],
+    "placement_seconds": 120,
+    "extra_place_seconds": 10,
+    "battle_valid_after_seconds": 130
+  },
+  "slots": {
+    "hand": [
+      {
+        "name": "hand_1",
+        "rect": [
+          542,
+          895,
+          223,
+          135
+        ],
+        "click": [
+          653,
+          1008
+        ]
+      },
+      {
+        "name": "hand_2",
+        "rect": [
+          770,
+          895,
+          223,
+          135
+        ],
+        "click": [
+          881,
+          1008
+        ]
+      },
+      {
+        "name": "hand_3",
+        "rect": [
+          988,
+          895,
+          223,
+          135
+        ],
+        "click": [
+          1099,
+          1008
+        ]
+      },
+      {
+        "name": "hand_4",
+        "rect": [
+          1215,
+          895,
+          223,
+          135
+        ],
+        "click": [
+          1326,
+          1008
+        ]
+      }
+    ],
+    "reserve": {
+      "name": "reserve",
+      "rect": [
+        1445,
+        895,
+        183,
+        135
+      ],
+      "click": [
+        1519,
+        1008
+      ]
+    }
+  },
+  "skills": [
+    {
+      "id": "damage_boost",
+      "name": "伤害提升",
+      "active": true,
+      "cooldown_seconds": 15,
+      "ready_mode": "cooldown_only",
+      "template": "templates/skills/damage_boost.png",
+      "rect": [
+        829,
+        932,
+        91,
+        89
+      ],
+      "click": [
+        874,
+        976
+      ],
+      "select_target_group": "cas066_damage_group",
+      "select_click": [
+        1074,
+        526
+      ],
+      "target_mode": "select_friendly_group",
+      "priority": 90,
+      "conditions": {
+        "after_seconds": 130,
+        "phases": [
+          "battle"
+        ]
+      }
+    },
+    {
+      "id": "cover_tank",
+      "name": "掩护承伤",
+      "active": true,
+      "cooldown_seconds": 30,
+      "ready_mode": "cooldown_only",
+      "template": "templates/skills/cover_tank.png",
+      "rect": [
+        1054,
+        932,
+        91,
+        89
+      ],
+      "click": [
+        1099,
+        976
+      ],
+      "select_target_group": "cas066_tank_group",
+      "select_click": [
+        1019,
+        366
+      ],
+      "target_mode": "select_friendly_group",
+      "priority": 100,
+      "conditions": {
+        "after_seconds": 130,
+        "phases": [
+          "battle"
+        ]
+      }
+    },
+    {
+      "id": "multi_target_fire",
+      "name": "多目标射击",
+      "active": true,
+      "cooldown_seconds": 15,
+      "ready_mode": "cooldown_only",
+      "template": "templates/skills/multi_target_fire.png",
+      "rect": [
+        1279,
+        932,
+        91,
+        89
+      ],
+      "click": [
+        1324,
+        976
+      ],
+      "select_target_group": "cas066_damage_group",
+      "select_click": [
+        1074,
+        526
+      ],
+      "target_mode": "select_friendly_group",
+      "priority": 85,
+      "conditions": {
+        "after_seconds": 130,
+        "phases": [
+          "battle"
+        ]
+      }
+    },
+    {
+      "id": "defense_intel_sync",
+      "name": "防御情报同步",
+      "active": false,
+      "cooldown_seconds": 0,
+      "ready_mode": "passive",
+      "template": null,
+      "rect": null,
+      "click": null,
+      "target_mode": "passive",
+      "priority": 0,
+      "conditions": {
+        "passive_group": "战场增益"
+      }
+    }
+  ],
+  "cards": [
+    {
+      "id": "fg300_armor",
+      "name": "FG300装甲型",
+      "cost": 10,
+      "row": "front",
+      "template": "templates/cards/fg300_armor.png",
+      "priority": 80,
+      "max_plays": 99,
+      "conditions": {}
+    },
+    {
+      "id": "carlilion",
+      "name": "卡利莱恩级",
+      "cost": 10,
+      "row": "front",
+      "template": "templates/cards/carlilion.png",
+      "priority": 90,
+      "max_plays": 99,
+      "conditions": {}
+    },
+    {
+      "id": "cas066",
+      "name": "CAS066综合型",
+      "cost": 50,
+      "row": "front",
+      "template": "templates/cards/cas066.png",
+      "priority": 100,
+      "max_plays": 99,
+      "conditions": {}
+    },
+    {
+      "id": "eris",
+      "name": "阋神星级",
+      "cost": 30,
+      "row": "middle",
+      "template": "templates/cards/eris.png",
+      "priority": 10,
+      "max_plays": 99,
+      "conditions": {}
+    },
+    {
+      "id": "rainsea_assault",
+      "name": "雨海突击型",
+      "cost": 20,
+      "row": "middle",
+      "template": "templates/cards/rainsea_assault.png",
+      "priority": 45,
+      "max_plays": 99,
+      "conditions": {}
+    },
+    {
+      "id": "reliat",
+      "name": "雷里亚特级",
+      "cost": 20,
+      "row": "back",
+      "template": "templates/cards/reliat.png",
+      "priority": 30,
+      "max_plays": 99,
+      "conditions": {}
+    },
+    {
+      "id": "tundra_support",
+      "name": "苔原支援型",
+      "cost": 30,
+      "row": "back",
+      "template": "templates/cards/tundra_support.png",
+      "priority": 70,
+      "max_plays": 99,
+      "conditions": {}
+    },
+    {
+      "id": "stingray",
+      "name": "刺水母级",
+      "cost": 20,
+      "row": "back",
+      "template": "templates/cards/stingray.png",
+      "priority": 40,
+      "max_plays": 99,
+      "conditions": {}
+    }
+  ],
+  "policy": {
+    "min_cost_to_act": 0,
+    "prefer_higher_cost_when_priority_ties": true,
+    "wait_for_high_priority_affordable_seconds": 3.0,
+    "opening_sequence": [],
+    "fallback": "play_highest_priority_affordable",
+    "deployment": {
+      "start_after_seconds": 75,
+      "priority_order": [
+        "cas066",
+        "carlilion",
+        "fg300_armor",
+        "tundra_support"
+      ],
+      "fallback_order": [
+        "rainsea_assault",
+        "stingray",
+        "reliat",
+        "eris"
+      ],
+      "wait_for_unaffordable_priority": true,
+      "extra_place_wait_for_unaffordable_priority": false,
+      "wait_for_all_hand_slots_playable": true,
+      "fallback_when_no_priority_visible": true
+    },
+    "battle": {
+      "notes": "Dynamically detect visible CAS066 groups. cover_tank targets cas066_tank_group; damage_boost and multi_target_fire target cas066_damage_group. select_click is only the fallback when detection fails.",
+      "target_groups": {
+        "cas066_tank_group": [
+          1019,
+          366
+        ],
+        "cas066_damage_group": [
+          1074,
+          526
+        ]
+      },
+      "dynamic_target_groups": {
+        "cas066_tank_group": {
+          "target_id": "cas066_battle_label",
+          "sort": "topmost",
+          "index": 0,
+          "min_candidates": 2
+        },
+        "cas066_damage_group": {
+          "target_id": "cas066_battle_label",
+          "sort": "bottommost",
+          "index": 0,
+          "min_candidates": 2
+        }
+      },
+      "skill_priority_order": [
+        "cover_tank",
+        "damage_boost",
+        "multi_target_fire"
+      ]
+    }
+  },
+  "battlefield": {
+    "always_read": false,
+    "targets": [
+      {
+        "id": "cas066_battle_label",
+        "name": "CAS066战场标签",
+        "template": "templates/battlefield/cas066_label.png",
+        "search_rect": [
+          693,
+          289,
+          643,
+          434
+        ],
+        "threshold": 0.7,
+        "min_distance": 70,
+        "max_matches": 4
+      }
+    ]
+  },
+  "calibration_regions": [
+    {
+      "name": "top_timer",
+      "rect": [
+        912,
+        20,
+        93,
+        30
+      ]
+    },
+    {
+      "name": "deploy_countdown_banner",
+      "rect": [
+        777,
+        853,
+        327,
+        58
+      ]
+    },
+    {
+      "name": "command_value_area",
+      "rect": [
+        515,
+        906,
+        188,
+        43
+      ]
+    },
+    {
+      "name": "card_bar",
+      "rect": [
+        534,
+        914,
+        1113,
+        164
+      ]
+    },
+    {
+      "name": "battle_skill_bar",
+      "rect": [
+        539,
+        959,
+        1118,
+        111
+      ]
+    },
+    {
+      "name": "battlefield_cas066_search",
+      "rect": [
+        693,
+        289,
+        643,
+        434
+      ]
+    },
+    {
+      "name": "enemy_center_target",
+      "rect": [
+        1499,
+        453,
+        129,
+        111
+      ]
+    },
+    {
+      "name": "battle_data_header",
+      "rect": [
+        1564,
+        140,
+        312,
+        77
+      ]
+    }
+  ]
+}
