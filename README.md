@@ -26,9 +26,23 @@
 - 当前版本包含技能目标刷新 fallback 修复：
   当实时释放技能前无法确认足够数量的 CAS066 标签，但本次动作已经有配置或决策给出的兜底目标点时，程序会继续释放技能，并在日志中记录 `target_confirmation_unverified`。
 
-## 下载后先看这里
+## 推荐安装方式
 
-这个仓库当前发布的是**源码版**，不是双击 exe 就能运行的绿色软件。电脑上必须先安装 Python，然后再用项目里的 `.bat` 脚本启动 GUI。
+普通用户推荐下载安装器，不需要自己安装 Python，也不需要运行 pip。
+
+1. 打开 GitHub 页面右侧的 `Releases`。
+2. 下载最新版本里的 `LagrangeStarHunterSetup-版本号.exe`。
+3. 双击安装器。
+4. 按提示一路“下一步”安装。
+5. 安装完成后，从桌面快捷方式或开始菜单启动“拉格朗日星际猎人自动化面板”。
+
+这种方式最接近普通软件安装流程。安装器会把运行所需的 Python 环境、依赖、配置和模板一起打包进去。
+
+如果没有看到 Release 安装器，或者你想从源码运行，再看下面的“源码版安装方式”。
+
+## 源码版安装方式
+
+源码版适合开发者或需要自己改配置的人使用。电脑上必须先安装 Python，然后再用项目里的 `.bat` 脚本启动 GUI。
 
 项目根目录里几个常用文件的作用：
 
@@ -38,7 +52,7 @@
 - `requirements.txt`：Python 依赖列表，不需要手动打开。
 - `configs/`、`templates/`、`lagrange_bot/`：程序运行需要的文件夹，不要移动到别的地方。
 
-## 第一次安装和打开
+## 源码版第一次安装和打开
 
 ### 1. 安装 Python
 
@@ -83,7 +97,7 @@ INSTALL_AND_RUN.bat
 
 第一次安装依赖可能比较慢，黑色命令行窗口里会刷很多英文日志，这是正常的。正常启动成功后，会弹出标题为“拉格朗日自动识别”的图形化窗口。
 
-## 以后怎么打开 GUI
+## 源码版以后怎么打开 GUI
 
 以后依赖已经装好时，直接双击：
 
@@ -243,6 +257,27 @@ python -m unittest discover -s tests
 
 部分视觉测试会引用本地私有采样图片；公开仓库不包含这些采样图，缺失时测试会自动跳过。
 
+## 打包和发布
+
+维护者可以用下面的命令在本地生成便携版 exe 文件夹：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\build_windows_app.ps1
+```
+
+生成结果在：
+
+```text
+dist\LagrangeStarHunter\LagrangeStarHunter.exe
+```
+
+GitHub Actions 会在推送 `v*` 标签时自动构建 Windows 安装器，并把 `LagrangeStarHunterSetup-版本号.exe` 上传到 GitHub Release。发版示例：
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
 ## 仓库内容
 
 公开仓库包含：
@@ -250,6 +285,9 @@ python -m unittest discover -s tests
 - `lagrange_bot/`：核心识别、决策、截图和 GUI 代码
 - `configs/`：示例配置和星际猎人 1920x1080 配置
 - `templates/`：裁剪后的识别模板
+- `packaging/`：PyInstaller 和 Inno Setup 打包配置
+- `tools/`：本地构建脚本
+- `.github/workflows/`：自动构建 Windows 安装器的 GitHub Actions
 - `tests/`：单元测试
 - `RUN_GUI.bat` / `RUN_DATA_GUI.bat` / `INSTALL_AND_RUN.bat`：Windows 启动脚本
 

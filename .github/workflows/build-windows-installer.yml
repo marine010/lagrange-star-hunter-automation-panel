@@ -1,0 +1,69 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-installer:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build portable app
+        shell: pwsh
+        run: .\tools\build_windows_app.ps1
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $version = $env:GITHUB_REF_NAME.TrimStart("v")
+          } else {
+            $version = "dev-$env:GITHUB_RUN_NUMBER"
+          }
+
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc /DMyAppVersion="$version" packaging\inno\LagrangeStarHunter.iss
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LagrangeStarHunterSetup
+          path: dist/installer/*.exe
+
+      - name: Create or update GitHub release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = Get-ChildItem dist\installer\*.exe | ForEach-Object { $_.FullName }
+          $notes = @"
+          下载 LagrangeStarHunterSetup 安装器后，按提示点击“下一步”安装即可。
+
+          安装完成后，可以从桌面快捷方式或开始菜单启动“拉格朗日星际猎人自动化面板”。
+          "@
+
+          gh release view $env:GITHUB_REF_NAME *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:GITHUB_REF_NAME $files --clobber
+          } else {
+            gh release create $env:GITHUB_REF_NAME $files --title "Lagrange Star Hunter $env:GITHUB_REF_NAME" --notes $notes
+          }
