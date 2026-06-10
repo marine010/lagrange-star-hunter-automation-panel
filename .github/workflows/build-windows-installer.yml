@@ -42,6 +42,9 @@ jobs:
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           & $iscc /DMyAppVersion="$version" packaging\inno\LagrangeStarHunter.iss
 
+          $versionedInstaller = Get-ChildItem dist\installer\LagrangeStarHunterSetup-*.exe | Select-Object -First 1
+          Copy-Item -LiteralPath $versionedInstaller.FullName -Destination dist\installer\LagrangeStarHunterSetup.exe -Force
+
       - name: Show installer output
         shell: pwsh
         run: Get-ChildItem dist\installer -Force

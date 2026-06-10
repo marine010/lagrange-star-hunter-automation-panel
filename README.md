@@ -26,19 +26,29 @@
 - 当前版本包含技能目标刷新 fallback 修复：
   当实时释放技能前无法确认足够数量的 CAS066 标签，但本次动作已经有配置或决策给出的兜底目标点时，程序会继续释放技能，并在日志中记录 `target_confirmation_unverified`。
 
-## 推荐安装方式
+## 普通用户最快安装方式
 
-普通用户推荐下载安装器，不需要自己安装 Python，也不需要运行 pip。
+普通用户推荐直接下载安装器，不需要安装 Python，也不需要运行 pip。
 
-1. 打开 GitHub 页面右侧的 `Releases`。
-2. 下载最新版本里的 `LagrangeStarHunterSetup-版本号.exe`。
-3. 双击安装器。
-4. 按提示一路“下一步”安装。
+1. 打开项目的 [Releases 页面](https://github.com/marine010/lagrange-star-hunter-automation-panel/releases)。
+2. 点开最新版本，下载 `LagrangeStarHunterSetup.exe` 或 `LagrangeStarHunterSetup-版本号.exe`。
+3. 双击下载好的安装器。
+4. 按提示一路点击 `Next` / `下一步`。
 5. 安装完成后，从桌面快捷方式或开始菜单启动“拉格朗日星际猎人自动化面板”。
 
 这种方式最接近普通软件安装流程。安装器会把运行所需的 Python 环境、依赖、配置和模板一起打包进去。
 
-如果没有看到 Release 安装器，或者你想从源码运行，再看下面的“源码版安装方式”。
+当前已发布的安装器可以直接下载：
+
+```text
+https://github.com/marine010/lagrange-star-hunter-automation-panel/releases/latest/download/LagrangeStarHunterSetup.exe
+```
+
+如果固定链接暂时不可用，也可以进入 Releases 页面，下载带版本号的安装器，例如 `LagrangeStarHunterSetup-0.1.1.exe`。
+
+如果 Windows 提示“已保护你的电脑”或“未知发布者”，这是因为安装器还没有做商业代码签名。确认来源是本仓库 Release 后，可以点击“更多信息” -> “仍要运行”继续安装。
+
+如果没有看到 Release 安装器，或者你想从源码运行，再看下面的“源码版安装方式”。普通群友优先用安装器，不建议直接下载源码包。
 
 ## 源码版安装方式
 
@@ -271,11 +281,23 @@ powershell -ExecutionPolicy Bypass -File .\tools\build_windows_app.ps1
 dist\LagrangeStarHunter\LagrangeStarHunter.exe
 ```
 
-GitHub Actions 会在推送 `v*` 标签时自动构建 Windows 安装器，并把 `LagrangeStarHunterSetup-版本号.exe` 上传到 GitHub Release。发版示例：
+如果要生成普通用户可一路下一步安装的安装器，需要安装 Inno Setup 6，然后运行：
 
 ```powershell
-git tag v0.1.0
-git push origin v0.1.0
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion="0.1.1" packaging\inno\LagrangeStarHunter.iss
+```
+
+生成结果在：
+
+```text
+dist\installer\LagrangeStarHunterSetup-0.1.1.exe
+```
+
+GitHub Actions 会在推送 `v*` 标签时自动构建 Windows 安装器，并把 `LagrangeStarHunterSetup-版本号.exe` 和固定文件名 `LagrangeStarHunterSetup.exe` 上传到 GitHub Release。发版示例：
+
+```powershell
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 ## 仓库内容
