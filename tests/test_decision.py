@@ -349,6 +349,38 @@ class DecisionTests(unittest.TestCase):
         self.assertEqual(refresh["target_confirmation"]["fallback_target_click"], (1019, 366))
         self.assertEqual(refresh["target_confirmation"]["execution"], "target_confirmation_unverified")
 
+    def test_live_skill_target_refresh_still_runs_when_current_frame_is_confirmed(self):
+        config = BotConfig.load(Path(__file__).parent.parent / "configs" / "star_hunter_1920.json")
+        gui = LagrangeTestGui.__new__(LagrangeTestGui)
+        gui._continuous_window = None
+        action = Action(
+            type=ActionType.CAST_SKILL,
+            skill_id="cover_tank",
+            click=(1099, 976),
+            target_click=(1019, 366),
+            reason="cast skill cover_tank",
+        )
+        state = GameState(
+            now_seconds=140,
+            phase=Phase.BATTLE,
+            cost=0,
+            visible_cards=[],
+            battlefield_targets=[
+                BattlefieldTarget("cas066_battle_label", "CAS066", 0.91, (900, 620, 120, 45), (960, 645)),
+                BattlefieldTarget("cas066_battle_label", "CAS066", 0.94, (1030, 350, 120, 45), (1090, 375)),
+            ],
+        )
+
+        refresh = gui._refresh_live_skill_target_before_click(action, state, config, reader=None)
+
+        self.assertTrue(refresh["ok"])
+        self.assertTrue(refresh["fallback"])
+        self.assertEqual(refresh["reason"], "target_refresh_fallback")
+        self.assertIs(refresh["action"], action)
+        self.assertEqual(refresh["target_confirmation"]["fallback_reason"], "target_refresh_missing_window")
+        self.assertEqual(refresh["target_confirmation"]["fallback_target_click"], (1019, 366))
+        self.assertEqual(refresh["target_confirmation"]["execution"], "target_confirmation_unverified")
+
     def test_live_skill_target_refresh_blocks_without_existing_target_click(self):
         config = BotConfig.load(Path(__file__).parent.parent / "configs" / "star_hunter_1920.json")
         gui = LagrangeTestGui.__new__(LagrangeTestGui)

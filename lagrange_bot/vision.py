@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from functools import lru_cache
+import json
 import threading
 import time
 from pathlib import Path
@@ -139,10 +140,12 @@ class ScreenReader:
         self.last_timer_attempts: list[dict[str, Any]] = []
         self.last_cost_attempts: list[dict[str, Any]] = []
         self.last_hand_card_diagnostics: dict[str, Any] = {}
+        self.last_battlefield_diagnostics: dict[str, Any] = {}
         self.last_timer_read_source: str | None = None
         self.last_timer_stabilizer: dict[str, Any] = {}
         self._card_title_templates: dict[str, list[str]] | None = None
         self._card_templates: dict[str, str] | None = None
+        self._battlefield_search_rect_cache: dict[str, tuple[tuple[int, int, int, int], dict[str, Any]]] = {}
         self._slot_card_cache: dict[str, dict[str, Any]] = {}
         self._stable_timer_seconds: float | None = None
         self._stable_timer_monotonic: float | None = None
@@ -363,9 +366,16 @@ class ScreenReader:
         }
         return adjusted
 
-    def mark_action_executed(self, action_type: str, item_id: str | None) -> None:
+    def mark_action_executed(
+        self,
+        action_type: str,
+        item_id: str | None,
+        now_seconds: float | None = None,
+    ) -> None:
         if action_type == "cast_skill" and item_id:
-            self.last_skill_cast[item_id] = time.monotonic() - self.start_monotonic
+            if now_seconds is None:
+                now_seconds = time.monotonic() - self.start_monotonic
+            self.last_skill_cast[item_id] = float(now_seconds)
 
     def _read_phase(self, now_seconds: float) -> Phase:
         mode = self.config.phase.get("mode", "time")
@@ -949,15 +959,19 @@ class ScreenReader:
 
     def _read_battlefield_targets(self, image: Any, phase: Phase) -> list[BattlefieldTarget]:
         battlefield = self.config.data.get("battlefield", {})
+        self.last_battlefield_diagnostics = {"enabled": bool(battlefield.get("targets", [])), "targets": {}}
         if phase != Phase.BATTLE and not bool(battlefield.get("always_read", False)):
+            self.last_battlefield_diagnostics["skipped_reason"] = "not_battle_phase"
             return []
 
         targets: list[BattlefieldTarget] = []
         for item in battlefield.get("targets", []):
             target_id = str(item["id"])
             template = _resolve_runtime_path(self.config.root, item.get("template"))
-            search_rect = tuple(int(v) for v in item.get("search_rect", [0, 0, 0, 0]))
+            search_rect, search_diagnostics = self._battlefield_search_rect(item)
+            self.last_battlefield_diagnostics["targets"][target_id] = search_diagnostics
             if not template or search_rect[2] <= 0 or search_rect[3] <= 0:
+                search_diagnostics["skipped_reason"] = "missing_template_or_rect"
                 continue
 
             matches = template_matches(
@@ -968,6 +982,15 @@ class ScreenReader:
                 min_distance=int(item.get("min_distance", 60)),
                 max_matches=int(item.get("max_matches", 8)),
             )
+            search_diagnostics["match_count"] = len(matches)
+            search_diagnostics["matches"] = [
+                {
+                    "confidence": round(match.confidence, 4),
+                    "rect": list(match.rect),
+                    "click": list(_match_click(match.rect, item.get("click_offset"))),
+                }
+                for match in matches
+            ]
             for match in matches:
                 click = _match_click(match.rect, item.get("click_offset"))
                 targets.append(
@@ -980,6 +1003,125 @@ class ScreenReader:
                     )
                 )
         return targets
+
+    def _battlefield_search_rect(self, item: dict[str, Any]) -> tuple[tuple[int, int, int, int], dict[str, Any]]:
+        target_id = str(item.get("id", "battlefield_target"))
+        mode = str(item.get("search_mode", "configured_rect"))
+        fallback_rect = tuple(int(v) for v in item.get("search_rect", [0, 0, 0, 0]))
+        if mode != "historical_row":
+            return fallback_rect, {"mode": "configured_rect", "search_rect": list(fallback_rect)}
+
+        cache_key = json.dumps(
+            {
+                "target_id": target_id,
+                "mode": mode,
+                "fallback_rect": fallback_rect,
+                "sources": item.get("historical_sources", []),
+                "min_time": item.get("historical_min_time_seconds", 130),
+                "row_x": item.get("row_scan_x", fallback_rect[0]),
+                "row_width": item.get("row_scan_width", fallback_rect[2]),
+                "padding_y": item.get("historical_padding_y", 80),
+            },
+            sort_keys=True,
+            default=str,
+        )
+        cached = self._battlefield_search_rect_cache.get(cache_key)
+        if cached is not None:
+            rect, diagnostics = cached
+            return rect, {**json.loads(json.dumps(diagnostics, default=str)), "cached": True}
+
+        rect, diagnostics = self._build_historical_battlefield_row_rect(target_id, item, fallback_rect)
+        self._battlefield_search_rect_cache[cache_key] = (rect, json.loads(json.dumps(diagnostics, default=str)))
+        return rect, json.loads(json.dumps(diagnostics, default=str))
+
+    def _build_historical_battlefield_row_rect(
+        self,
+        target_id: str,
+        item: dict[str, Any],
+        fallback_rect: tuple[int, int, int, int],
+    ) -> tuple[tuple[int, int, int, int], dict[str, Any]]:
+        min_time = float(item.get("historical_min_time_seconds", 130))
+        padding_y = int(item.get("historical_padding_y", 80))
+        row_x = int(item.get("row_scan_x", fallback_rect[0]))
+        row_width = int(item.get("row_scan_width", fallback_rect[2]))
+        rects: list[tuple[int, int, int, int]] = []
+        frames_seen = 0
+        frames_used = 0
+        frames_without_time = 0
+        manifests_used: list[str] = []
+
+        for source in item.get("historical_sources", []):
+            source_path = _resolve_runtime_path(self.config.root, source)
+            if source_path is None:
+                continue
+            manifest_paths = _historical_manifest_paths(source_path)
+            for manifest_path in manifest_paths:
+                if not manifest_path.exists():
+                    continue
+                manifest_used = False
+                try:
+                    handle = manifest_path.open("r", encoding="utf-8")
+                except OSError:
+                    continue
+                with handle:
+                    for line in handle:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            record = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        frames_seen += 1
+                        seconds = _historical_record_seconds(record)
+                        if seconds is None:
+                            frames_without_time += 1
+                            continue
+                        if seconds < min_time:
+                            continue
+                        if str(record.get("state", {}).get("phase", "")).lower() != "battle":
+                            continue
+                        frame_rects = _historical_target_rects(record, target_id)
+                        if not frame_rects:
+                            continue
+                        rects.extend(frame_rects)
+                        frames_used += 1
+                        manifest_used = True
+                if manifest_used:
+                    manifests_used.append(str(manifest_path))
+
+        if not rects:
+            return fallback_rect, {
+                "mode": "historical_row",
+                "source": "fallback_config",
+                "search_rect": list(fallback_rect),
+                "historical_min_time_seconds": min_time,
+                "frames_seen": frames_seen,
+                "frames_used": frames_used,
+                "frames_without_time": frames_without_time,
+                "sample_rect_count": 0,
+            }
+
+        min_top = min(rect[1] for rect in rects)
+        max_bottom = max(rect[1] + rect[3] for rect in rects)
+        top = max(0, min_top - padding_y)
+        height = max(1, (max_bottom - min_top) + padding_y * 2)
+        search_rect = (row_x, top, row_width, height)
+        xs = [rect[0] for rect in rects]
+        ys = [rect[1] for rect in rects]
+        return search_rect, {
+            "mode": "historical_row",
+            "source": "historical_samples",
+            "search_rect": list(search_rect),
+            "historical_min_time_seconds": min_time,
+            "frames_seen": frames_seen,
+            "frames_used": frames_used,
+            "frames_without_time": frames_without_time,
+            "sample_rect_count": len(rects),
+            "sample_x_range": [min(xs), max(xs)],
+            "sample_y_range": [min(ys), max(ys)],
+            "manifests_used": manifests_used,
+        }
 
     def _frame_cache_for(self, image: Any) -> _FrameCache | None:
         cache = self._active_frame_cache
@@ -1199,6 +1341,52 @@ def _resolve_runtime_path(root: Path, path_value: str | None) -> Path | None:
     if path.is_absolute():
         return path
     return root / path
+
+
+def _historical_manifest_paths(source_path: Path) -> list[Path]:
+    if source_path.is_file():
+        return [source_path]
+    if source_path.name == "training_samples":
+        return sorted(source_path.glob("battle_live_*/manifest.jsonl"))
+    manifest = source_path / "manifest.jsonl"
+    if manifest.exists():
+        return [manifest]
+    return sorted(source_path.glob("**/manifest.jsonl"))
+
+
+def _historical_record_seconds(record: dict[str, Any]) -> float | None:
+    state = record.get("state")
+    candidates: list[Any] = []
+    if isinstance(state, dict):
+        candidates.append(state.get("time"))
+    candidates.append(record.get("screen_timer_seconds"))
+    for value in candidates:
+        if isinstance(value, (int, float)):
+            return float(value)
+    return None
+
+
+def _historical_target_rects(record: dict[str, Any], target_id: str) -> list[tuple[int, int, int, int]]:
+    state = record.get("state")
+    if not isinstance(state, dict):
+        return []
+    targets = state.get("battlefield_targets")
+    if not isinstance(targets, list):
+        return []
+    rects: list[tuple[int, int, int, int]] = []
+    for target in targets:
+        if not isinstance(target, dict) or str(target.get("target_id")) != target_id:
+            continue
+        rect = target.get("rect")
+        if not isinstance(rect, list) or len(rect) != 4:
+            continue
+        try:
+            parsed = tuple(int(value) for value in rect)
+        except (TypeError, ValueError):
+            continue
+        if parsed[2] > 0 and parsed[3] > 0:
+            rects.append(parsed)  # type: ignore[arg-type]
+    return rects
 
 
 def _match_click(rect: tuple[int, int, int, int], click_offset: Any) -> tuple[int, int]:

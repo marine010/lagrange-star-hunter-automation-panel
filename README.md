@@ -46,6 +46,22 @@ RUN_GUI.bat
 
 启动后，在 GUI 中选择游戏窗口，再进行识别、预览和实时执行。
 
+## 数据采集界面
+
+如果要继续补充手牌、技能或 066 战斗目标样本，可以启动专用的数据采集 GUI：
+
+```powershell
+python -m lagrange_bot.data_gui --config configs\star_hunter_1920.json
+```
+
+也可以双击：
+
+```text
+RUN_DATA_GUI.bat
+```
+
+采集结果默认写入 `training_samples/`，该目录已被 Git 忽略，不会进入公开仓库。
+
 ## 测试
 
 ```powershell
@@ -63,7 +79,7 @@ python -m unittest discover -s tests
 - `configs/`：示例配置和星际猎人 1920x1080 配置
 - `templates/`：裁剪后的识别模板
 - `tests/`：单元测试
-- `RUN_GUI.bat` / `INSTALL_AND_RUN.bat`：Windows 启动脚本
+- `RUN_GUI.bat` / `RUN_DATA_GUI.bat` / `INSTALL_AND_RUN.bat`：Windows 启动脚本
 
 公开仓库不包含：
 

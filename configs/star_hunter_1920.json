@@ -447,15 +447,23 @@
         "id": "cas066_battle_label",
         "name": "CAS066战场标签",
         "template": "templates/battlefield/cas066_label.png",
+        "search_mode": "historical_row",
+        "historical_sources": [
+          "training_samples"
+        ],
+        "historical_min_time_seconds": 130,
+        "historical_padding_y": 80,
+        "row_scan_x": 160,
+        "row_scan_width": 1600,
         "search_rect": [
-          693,
-          289,
-          643,
-          434
+          160,
+          220,
+          1600,
+          560
         ],
         "threshold": 0.7,
         "min_distance": 70,
-        "max_matches": 4
+        "max_matches": 8
       }
     ]
   },
@@ -508,10 +516,10 @@
     {
       "name": "battlefield_cas066_search",
       "rect": [
-        693,
-        289,
-        643,
-        434
+        160,
+        220,
+        1600,
+        560
       ]
     },
     {

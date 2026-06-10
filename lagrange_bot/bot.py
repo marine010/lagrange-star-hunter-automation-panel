@@ -259,7 +259,7 @@ def cmd_run(args) -> int:
         )
         executor.execute(execute_action)
         if action.type == ActionType.CAST_SKILL:
-            reader.mark_action_executed(action.type.value, action.skill_id)
+            reader.mark_action_executed(action.type.value, action.skill_id, state.now_seconds)
         if action.type == ActionType.PLAY_CARD and not dry_run and action.card_id:
             played_counts[action.card_id] = played_counts.get(action.card_id, 0) + 1
         if args.once:
@@ -651,6 +651,7 @@ def cmd_collect_battle(args) -> int:
                 "read_state_timings": reader.last_read_state_timings,
                 "timer_attempts": reader.last_timer_attempts,
                 "timer_stabilizer": reader.last_timer_stabilizer,
+                "battlefield_diagnostics": reader.last_battlefield_diagnostics,
                 "raw_image": str(raw_path),
                 "skills": skill_crops,
                 "battlefield": battlefield_crops,
@@ -819,6 +820,13 @@ def cmd_gui(args) -> int:
     return 0
 
 
+def cmd_data_gui(args) -> int:
+    from .data_gui import launch_data_gui
+
+    launch_data_gui(args.config)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Authorized private-server Lagrange automation scaffold.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -945,6 +953,10 @@ def build_parser() -> argparse.ArgumentParser:
     gui = sub.add_parser("gui", help="Open the local GUI test panel.")
     gui.add_argument("--config", default=str(Path("configs") / "star_hunter_1920.json"))
     gui.set_defaults(func=cmd_gui)
+
+    data_gui = sub.add_parser("data-gui", help="Open the data collection GUI.")
+    data_gui.add_argument("--config", default=str(Path("configs") / "star_hunter_1920.json"))
+    data_gui.set_defaults(func=cmd_data_gui)
     return parser
 
 

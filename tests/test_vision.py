@@ -242,6 +242,126 @@ class VisionTests(unittest.TestCase):
         self.assertFalse(reader._read_skills(dark_image, now_seconds=14.9)[0].ready)
         self.assertTrue(reader._read_skills(dark_image, now_seconds=15.0)[0].ready)
 
+    def test_mark_action_executed_uses_game_seconds_for_skill_cooldown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_dir = root / "configs"
+            config_dir.mkdir()
+            path = config_dir / "sample_config.json"
+            data = json.loads(json.dumps(SAMPLE))
+            data["skills"] = [
+                {
+                    "id": "cover_tank",
+                    "name": "Cover Tank",
+                    "active": True,
+                    "cooldown_seconds": 30,
+                    "ready_mode": "cooldown_only",
+                    "template": "missing_skill.png",
+                    "rect": [0, 0, 20, 20],
+                    "click": [10, 10],
+                    "conditions": {},
+                }
+            ]
+            path.write_text(json.dumps(data), encoding="utf-8")
+            config = BotConfig.load(path)
+
+        reader = ScreenReader(config)
+        image = Image.new("RGB", (40, 40), (5, 5, 5))
+
+        reader.mark_action_executed("cast_skill", "cover_tank", now_seconds=130.0)
+
+        self.assertFalse(reader._read_skills(image, now_seconds=159.9)[0].ready)
+        ready = reader._read_skills(image, now_seconds=160.0)[0]
+        self.assertTrue(ready.ready)
+        self.assertEqual(ready.seconds_since_cast, 30.0)
+
+    def test_historical_battlefield_row_rect_uses_only_battle_frames_after_130_seconds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_dir = root / "configs"
+            samples_dir = root / "training_samples" / "battle_live_sample"
+            config_dir.mkdir()
+            samples_dir.mkdir(parents=True)
+            manifest = samples_dir / "manifest.jsonl"
+            records = [
+                {
+                    "screen_timer_seconds": 129,
+                    "state": {
+                        "phase": "battle",
+                        "battlefield_targets": [
+                            {"target_id": "cas066_battle_label", "rect": [300, 90, 174, 42]}
+                        ],
+                    },
+                },
+                {
+                    "state": {
+                        "phase": "battle",
+                        "battlefield_targets": [
+                            {"target_id": "cas066_battle_label", "rect": [300, 120, 174, 42]}
+                        ],
+                    },
+                },
+                {
+                    "screen_timer_seconds": 130,
+                    "state": {
+                        "phase": "battle",
+                        "battlefield_targets": [
+                            {"target_id": "cas066_battle_label", "rect": [994, 302, 174, 42]}
+                        ],
+                    },
+                },
+                {
+                    "state": {
+                        "time": 150,
+                        "phase": "battle",
+                        "battlefield_targets": [
+                            {"target_id": "cas066_battle_label", "rect": [994, 623, 174, 42]}
+                        ],
+                    },
+                },
+                {
+                    "state": {
+                        "time": 160,
+                        "phase": "placement",
+                        "battlefield_targets": [
+                            {"target_id": "cas066_battle_label", "rect": [994, 800, 174, 42]}
+                        ],
+                    },
+                },
+            ]
+            manifest.write_text("\n".join(json.dumps(item) for item in records), encoding="utf-8")
+
+            data = json.loads(json.dumps(SAMPLE))
+            data["battlefield"] = {
+                "targets": [
+                    {
+                        "id": "cas066_battle_label",
+                        "template": "missing.png",
+                        "search_mode": "historical_row",
+                        "historical_sources": ["training_samples"],
+                        "historical_min_time_seconds": 130,
+                        "historical_padding_y": 10,
+                        "row_scan_x": 160,
+                        "row_scan_width": 1600,
+                        "search_rect": [160, 220, 1600, 560],
+                    }
+                ]
+            }
+            path = config_dir / "sample_config.json"
+            path.write_text(json.dumps(data), encoding="utf-8")
+            config = BotConfig.load(path)
+
+            reader = ScreenReader(config)
+            rect, diagnostics = reader._battlefield_search_rect(config.data["battlefield"]["targets"][0])
+
+            self.assertEqual(rect, (160, 292, 1600, 383))
+            self.assertEqual(diagnostics["source"], "historical_samples")
+            self.assertEqual(diagnostics["historical_min_time_seconds"], 130.0)
+            self.assertEqual(diagnostics["frames_used"], 2)
+            self.assertEqual(diagnostics["frames_without_time"], 1)
+            self.assertEqual(diagnostics["sample_rect_count"], 2)
+            self.assertEqual(diagnostics["sample_y_range"], [302, 623])
+
 
 if __name__ == "__main__":
     unittest.main()

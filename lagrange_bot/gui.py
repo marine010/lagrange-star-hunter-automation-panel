@@ -229,6 +229,12 @@ def _format_battlefield_summary(payload: dict[str, Any]) -> str:
     return " | ".join(parts)
 
 
+def _format_confidence(value: Any) -> str:
+    if isinstance(value, (int, float)) and float(value) > 0:
+        return f"{float(value):.2f}"
+    return "--"
+
+
 def _offset_point(
     point: tuple[int, int] | None,
     origin: tuple[int, int],
@@ -464,9 +470,9 @@ def capture_window(window: WindowInfo, config: BotConfig) -> tuple[Image.Image, 
 class LagrangeTestGui(tk.Tk):
     def __init__(self, config_path: Path | None = None):
         super().__init__()
-        self.title("Lagrange Bot Test Panel")
-        self.geometry("1220x780")
-        self.minsize(980, 620)
+        self.title("拉格朗日自动识别")
+        self.geometry("640x680")
+        self.minsize(600, 630)
 
         self.config_path_var = tk.StringVar(value=str((config_path or DEFAULT_CONFIG).resolve()))
         self.image_path_var = tk.StringVar(value="")
@@ -478,8 +484,8 @@ class LagrangeTestGui(tk.Tk):
         self.window_var = tk.StringVar(value="")
         self._windows: list[WindowInfo] = []
         self.continuous_window_var = tk.BooleanVar(value=False)
-        self.live_play_card_var = tk.BooleanVar(value=False)
-        self.live_skill_var = tk.BooleanVar(value=False)
+        self.live_play_card_var = tk.BooleanVar(value=True)
+        self.live_skill_var = tk.BooleanVar(value=True)
         self.hand_training_var = tk.BooleanVar(value=False)
         self.battle_training_var = tk.BooleanVar(value=False)
 
@@ -527,120 +533,167 @@ class LagrangeTestGui(tk.Tk):
         self.after(100, self._poll_queue)
 
     def _build_ui(self) -> None:
-        self.columnconfigure(0, weight=3)
-        self.columnconfigure(1, weight=2)
+        self.configure(background="#0f172a")
+        self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
+        self._build_styles()
 
-        controls = ttk.Frame(self, padding=(10, 8))
-        controls.grid(row=0, column=0, columnspan=2, sticky="ew")
+        controls = ttk.Frame(self, padding=(8, 6), style="Top.TFrame")
+        controls.grid(row=0, column=0, sticky="ew")
         controls.columnconfigure(1, weight=1)
-        controls.columnconfigure(4, weight=1)
 
-        ttk.Label(controls, text="配置").grid(row=0, column=0, sticky="w")
-        ttk.Entry(controls, textvariable=self.config_path_var).grid(
-            row=0, column=1, columnspan=3, sticky="ew", padx=(6, 6)
+        ttk.Label(controls, text="拉格朗日自动识别", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        self.window_combo = ttk.Combobox(
+            controls,
+            textvariable=self.window_var,
+            state="readonly",
+            postcommand=self.refresh_windows_clicked,
         )
-        ttk.Button(controls, text="选择", command=self._browse_config).grid(row=0, column=4, sticky="w")
-        ttk.Button(controls, text="校验素材", command=self.validate_assets_clicked).grid(
-            row=0, column=5, padx=(8, 0)
-        )
-
-        ttk.Label(controls, text="截图").grid(row=1, column=0, sticky="w", pady=(8, 0))
-        ttk.Entry(controls, textvariable=self.image_path_var).grid(
-            row=1, column=1, columnspan=3, sticky="ew", padx=(6, 6), pady=(8, 0)
-        )
-        ttk.Button(controls, text="选择", command=self._browse_image).grid(row=1, column=4, sticky="w", pady=(8, 0))
-        ttk.Button(controls, text="识别截图", command=self.detect_image_clicked).grid(
-            row=1, column=5, padx=(8, 0), pady=(8, 0)
-        )
-        ttk.Button(controls, text="截屏识别", command=self.capture_clicked).grid(
-            row=1, column=6, padx=(8, 0), pady=(8, 0)
-        )
-
-        ttk.Label(controls, text="窗口").grid(row=2, column=0, sticky="w", pady=(8, 0))
-        self.window_combo = ttk.Combobox(controls, textvariable=self.window_var, state="readonly")
-        self.window_combo.grid(row=2, column=1, columnspan=3, sticky="ew", padx=(6, 6), pady=(8, 0))
-        ttk.Button(controls, text="刷新窗口", command=self.refresh_windows_clicked).grid(
-            row=2, column=4, sticky="w", pady=(8, 0)
-        )
-        ttk.Button(controls, text="窗口识别", command=self.detect_window_clicked).grid(
-            row=2, column=5, padx=(8, 0), pady=(8, 0)
-        )
+        self.window_combo.grid(row=0, column=1, sticky="ew", padx=(8, 6))
         self.continuous_button = ttk.Button(
             controls,
-            text="开始连续识别",
+            text="开始识别",
             command=self.toggle_continuous_window_clicked,
+            style="Accent.TButton",
         )
-        self.continuous_button.grid(row=2, column=6, padx=(8, 0), pady=(8, 0))
+        self.continuous_button.grid(row=0, column=2)
         self.hand_training_button = ttk.Button(
             controls,
             text="开始手牌采集",
             command=self.toggle_hand_training_clicked,
         )
-        self.hand_training_button.grid(row=2, column=7, padx=(8, 0), pady=(8, 0))
         self.battle_training_button = ttk.Button(
             controls,
             text="开始战斗采集",
             command=self.toggle_battle_training_clicked,
         )
-        self.battle_training_button.grid(row=2, column=8, padx=(8, 0), pady=(8, 0))
 
-        options = ttk.Frame(controls)
-        options.grid(row=3, column=1, columnspan=7, sticky="ew", pady=(8, 0))
-        ttk.Label(options, text="时间秒").pack(side="left")
-        ttk.Entry(options, textvariable=self.time_var, width=8).pack(side="left", padx=(6, 14))
-        ttk.Label(options, text="阶段").pack(side="left")
-        ttk.Combobox(
-            options,
-            textvariable=self.phase_override_var,
-            values=["auto", "placement", "extra_place", "battle"],
-            state="readonly",
-            width=11,
-        ).pack(side="left", padx=(6, 14))
-        ttk.Checkbutton(options, text="覆盖费用", variable=self.cost_override_enabled).pack(side="left")
-        ttk.Entry(options, textvariable=self.cost_override_var, width=8).pack(side="left", padx=(6, 14))
-        ttk.Checkbutton(options, text="执行手牌点击", variable=self.live_play_card_var).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(options, text="执行技能点击", variable=self.live_skill_var).pack(side="left", padx=(0, 14))
-        ttk.Label(
-            options,
-            text="提示: 75 秒后测试布阵, 140 秒测试战斗; 覆盖费用只影响决策预览; 勾选执行项才会真实点击。",
-        ).pack(side="left")
+        dashboard = ttk.Frame(self, padding=(8, 8), style="App.TFrame")
+        dashboard.grid(row=1, column=0, sticky="nsew")
+        dashboard.columnconfigure(0, weight=1)
+        dashboard.columnconfigure(1, weight=1)
+        dashboard.rowconfigure(1, weight=1)
 
-        preview_frame = ttk.Frame(self, padding=(10, 0, 5, 6))
-        preview_frame.grid(row=1, column=0, sticky="nsew")
-        preview_frame.rowconfigure(0, weight=1)
-        preview_frame.columnconfigure(0, weight=1)
+        self.time_value_var = tk.StringVar(value="--")
+        self.cost_value_var = tk.StringVar(value="--")
+        self.phase_value_var = tk.StringVar(value="等待开始")
+        self.last_action_var = tk.StringVar(value="自动放置手牌和技能释放已开启")
+        self.hand_card_vars: list[dict[str, tk.StringVar]] = []
+        self.skill_card_vars: dict[str, dict[str, tk.StringVar]] = {}
+        self.hand_status_labels: list[ttk.Label] = []
+        self.skill_status_labels: dict[str, ttk.Label] = {}
 
-        self.preview_label = ttk.Label(preview_frame, anchor="center", background="#111827")
-        self.preview_label.grid(row=0, column=0, sticky="nsew")
+        metrics = ttk.Frame(dashboard, style="App.TFrame")
+        metrics.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+        metrics.columnconfigure(0, weight=1)
+        metrics.columnconfigure(1, weight=1)
+        self._build_metric_card(metrics, 0, "时间", self.time_value_var, "s")
+        self._build_metric_card(metrics, 1, "费用", self.cost_value_var, "")
 
-        output_frame = ttk.Frame(self, padding=(5, 0, 10, 6))
-        output_frame.grid(row=1, column=1, sticky="nsew")
-        output_frame.rowconfigure(1, weight=1)
-        output_frame.columnconfigure(0, weight=1)
+        hand_section = ttk.Frame(dashboard, style="Panel.TFrame", padding=6)
+        hand_section.grid(row=1, column=0, sticky="nsew", padx=(0, 4))
+        hand_section.columnconfigure(0, weight=1)
+        hand_section.rowconfigure(5, weight=1)
+        ttk.Label(hand_section, text="手牌", style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        for index in range(4):
+            vars_for_card = {
+                "title": tk.StringVar(value=f"手牌 {index + 1}"),
+                "name": tk.StringVar(value="未识别"),
+                "state": tk.StringVar(value="等待"),
+                "confidence": tk.StringVar(value="--"),
+            }
+            self.hand_card_vars.append(vars_for_card)
+            self.hand_status_labels.append(self._build_status_card(hand_section, index + 1, vars_for_card))
 
-        summary = ttk.LabelFrame(output_frame, text="动作建议", padding=8)
-        summary.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        summary.columnconfigure(0, weight=1)
-        self.summary_var = tk.StringVar(value="还没有识别结果")
-        ttk.Label(summary, textvariable=self.summary_var, justify="left").grid(row=0, column=0, sticky="w")
+        skill_section = ttk.Frame(dashboard, style="Panel.TFrame", padding=6)
+        skill_section.grid(row=1, column=1, sticky="nsew", padx=(4, 0))
+        skill_section.columnconfigure(0, weight=1)
+        skill_section.rowconfigure(5, weight=1)
+        ttk.Label(skill_section, text="技能", style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        for index, skill_id in enumerate(("damage_boost", "cover_tank", "multi_target_fire", "defense_intel_sync"), start=1):
+            vars_for_skill = {
+                "title": tk.StringVar(value=skill_id),
+                "name": tk.StringVar(value=skill_id),
+                "state": tk.StringVar(value="等待"),
+                "confidence": tk.StringVar(value="--"),
+            }
+            self.skill_card_vars[skill_id] = vars_for_skill
+            self.skill_status_labels[skill_id] = self._build_status_card(skill_section, index, vars_for_skill)
 
-        details = ttk.LabelFrame(output_frame, text="状态 JSON", padding=4)
-        details.grid(row=1, column=0, sticky="nsew")
-        details.rowconfigure(0, weight=1)
-        details.columnconfigure(0, weight=1)
-        self.output_text = tk.Text(details, wrap="none", height=10)
-        self.output_text.grid(row=0, column=0, sticky="nsew")
-        yscroll = ttk.Scrollbar(details, orient="vertical", command=self.output_text.yview)
-        yscroll.grid(row=0, column=1, sticky="ns")
-        xscroll = ttk.Scrollbar(details, orient="horizontal", command=self.output_text.xview)
-        xscroll.grid(row=1, column=0, sticky="ew")
-        self.output_text.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+        self.summary_var = self.last_action_var
+        self.preview_label = ttk.Label(dashboard)
+        self.output_text = tk.Text(self, wrap="none", height=1)
 
-        status = ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w", padding=(8, 3))
-        status.grid(row=2, column=0, columnspan=2, sticky="ew")
         self.refresh_windows_clicked()
-        self.status_var.set(f"Ready | log: {self.logger.dir}")
+        self._enable_default_automation()
+        self.status_var.set("就绪")
+
+    def _build_styles(self) -> None:
+        style = ttk.Style(self)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+        style.configure("App.TFrame", background="#0f172a")
+        style.configure("Top.TFrame", background="#e5edf7")
+        style.configure("Panel.TFrame", background="#f8fafc", relief="flat")
+        style.configure("Metric.TFrame", background="#f8fafc", relief="flat")
+        style.configure("Card.TFrame", background="#ffffff", relief="flat")
+        style.configure("Title.TLabel", background="#e5edf7", foreground="#0f172a", font=("Microsoft YaHei UI", 10, "bold"))
+        style.configure("Section.TLabel", background="#f8fafc", foreground="#0f172a", font=("Microsoft YaHei UI", 9, "bold"))
+        style.configure("MetricLabel.TLabel", background="#f8fafc", foreground="#64748b", font=("Microsoft YaHei UI", 7))
+        style.configure("MetricValue.TLabel", background="#f8fafc", foreground="#0f172a", font=("Microsoft YaHei UI", 16, "bold"))
+        style.configure("MetricUnit.TLabel", background="#f8fafc", foreground="#64748b", font=("Microsoft YaHei UI", 8))
+        style.configure("CardTitle.TLabel", background="#ffffff", foreground="#64748b", font=("Microsoft YaHei UI", 7))
+        style.configure("CardName.TLabel", background="#ffffff", foreground="#0f172a", font=("Microsoft YaHei UI", 8, "bold"))
+        style.configure("CardState.TLabel", background="#ffffff", foreground="#16a34a", font=("Microsoft YaHei UI", 8, "bold"))
+        style.configure("CardStateReady.TLabel", background="#ffffff", foreground="#16a34a", font=("Microsoft YaHei UI", 8, "bold"))
+        style.configure("CardStateMuted.TLabel", background="#ffffff", foreground="#64748b", font=("Microsoft YaHei UI", 8, "bold"))
+        style.configure("CardStateWarn.TLabel", background="#ffffff", foreground="#d97706", font=("Microsoft YaHei UI", 8, "bold"))
+        style.configure("CardStateDanger.TLabel", background="#ffffff", foreground="#dc2626", font=("Microsoft YaHei UI", 8, "bold"))
+        style.configure("CardMeta.TLabel", background="#ffffff", foreground="#64748b", font=("Microsoft YaHei UI", 7))
+        style.configure("Accent.TButton", font=("Microsoft YaHei UI", 8, "bold"))
+
+    def _build_metric_card(
+        self,
+        parent: ttk.Frame,
+        column: int,
+        label: str,
+        value_var: tk.StringVar,
+        unit: str,
+    ) -> None:
+        card = ttk.Frame(parent, style="Metric.TFrame", padding=(10, 5))
+        card.grid(row=0, column=column, sticky="ew", padx=(0, 4) if column == 0 else (4, 0))
+        card.columnconfigure(0, weight=1)
+        ttk.Label(card, text=label, style="MetricLabel.TLabel").grid(row=0, column=0, sticky="w")
+        value_line = ttk.Frame(card, style="Metric.TFrame")
+        value_line.grid(row=1, column=0, sticky="w")
+        ttk.Label(value_line, textvariable=value_var, style="MetricValue.TLabel").pack(side="left")
+        if unit:
+            ttk.Label(value_line, text=unit, style="MetricUnit.TLabel").pack(side="left", padx=(3, 0), pady=(8, 0))
+
+    def _build_status_card(
+        self,
+        parent: ttk.Frame,
+        row: int,
+        vars_for_card: dict[str, tk.StringVar],
+    ) -> ttk.Label:
+        card = ttk.Frame(parent, style="Card.TFrame", padding=(7, 4))
+        card.grid(row=row, column=0, sticky="ew", pady=(4, 0))
+        card.columnconfigure(0, weight=1)
+        ttk.Label(card, textvariable=vars_for_card["title"], style="CardTitle.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(card, textvariable=vars_for_card["name"], style="CardName.TLabel").grid(row=1, column=0, sticky="w")
+        bottom = ttk.Frame(card, style="Card.TFrame")
+        bottom.grid(row=2, column=0, sticky="ew", pady=(1, 0))
+        bottom.columnconfigure(1, weight=1)
+        status_label = ttk.Label(bottom, textvariable=vars_for_card["state"], style="CardStateMuted.TLabel")
+        status_label.grid(row=0, column=0, sticky="w")
+        ttk.Label(bottom, textvariable=vars_for_card["confidence"], style="CardMeta.TLabel").grid(row=0, column=1, sticky="e")
+        return status_label
+
+    def _enable_default_automation(self) -> None:
+        self.live_play_card_var.set(True)
+        self.live_skill_var.set(True)
 
     def _browse_config(self) -> None:
         path = filedialog.askopenfilename(
@@ -873,6 +926,7 @@ class LagrangeTestGui(tk.Tk):
             self._stop_continuous_window("button")
             return
 
+        self._enable_default_automation()
         try:
             window = self._selected_window()
         except Exception as exc:
@@ -895,7 +949,7 @@ class LagrangeTestGui(tk.Tk):
         stop_wgc_sessions()
         self._set_capture_window_topmost(window)
         self.continuous_window_var.set(True)
-        self.continuous_button.configure(text="停止连续识别")
+        self.continuous_button.configure(text="停止识别")
         options = self._continuous_screen_options()
         self.logger.event(
             "continuous_window_start",
@@ -936,7 +990,7 @@ class LagrangeTestGui(tk.Tk):
         self._last_continuous_capture_rect = None
         self._last_continuous_rect_change_monotonic = None
         self._opening_zoom_active = False
-        self.continuous_button.configure(text="开始连续识别")
+        self.continuous_button.configure(text="开始识别")
         stop_wgc_sessions()
         self._clear_capture_window_topmost()
         self.logger.event(
@@ -1659,6 +1713,7 @@ class LagrangeTestGui(tk.Tk):
                 "timer_stabilizer": reader.last_timer_stabilizer,
                 "cost_attempts": reader.last_cost_attempts,
                 "hand_card_diagnostics": reader.last_hand_card_diagnostics,
+                "battlefield_diagnostics": reader.last_battlefield_diagnostics,
             },
             "raw_image": str(raw_path.resolve()) if raw_path else None,
             "annotated_image": str(annotated_path.resolve()) if annotated_path else None,
@@ -1715,7 +1770,12 @@ class LagrangeTestGui(tk.Tk):
         )
 
         if confirmed:
-            reader.mark_action_executed("cast_skill", str(skill_id) if skill_id else None)
+            executed_at = pending.get("state_now_seconds")
+            reader.mark_action_executed(
+                "cast_skill",
+                str(skill_id) if skill_id else None,
+                float(executed_at) if isinstance(executed_at, (int, float)) else state.now_seconds,
+            )
             self._pending_live_skill = None
             self._suppress_skill_in_state(state, str(skill_id), "live_skill_confirmed")
             result = {
@@ -1965,6 +2025,7 @@ class LagrangeTestGui(tk.Tk):
         self._pending_live_skill = {
             "skill_id": action.skill_id,
             "started_monotonic": now,
+            "state_now_seconds": state.now_seconds,
             "window_click": action.click,
             "window_target_click": action.target_click,
             "screen_click": screen_click,
@@ -2002,7 +2063,6 @@ class LagrangeTestGui(tk.Tk):
                 "state": state,
                 "target_confirmation": initial_confirmation,
             }
-
         window = self._continuous_window
         if window is None:
             return self._live_skill_target_refresh_fallback(
@@ -2305,52 +2365,110 @@ class LagrangeTestGui(tk.Tk):
             return
 
         action = payload["action"]
-        state = payload["state"]
-        hand_summary = _format_hand_summary(payload)
-        skill_summary = _format_skill_summary(payload)
-        battlefield_summary = _format_battlefield_summary(payload)
         live_play_card = payload.get("live_play_card") if isinstance(payload.get("live_play_card"), dict) else None
         live_skill = payload.get("live_skill") if isinstance(payload.get("live_skill"), dict) else None
-        live_summary = ""
-        if live_play_card:
-            if live_play_card.get("executed"):
-                live_summary = f"手牌点击: {live_play_card.get('card_id')} @ {live_play_card.get('screen_click')}"
-            else:
-                live_summary = f"手牌点击: {live_play_card.get('reason')}"
-        skill_live_summary = ""
-        if live_skill:
-            if live_skill.get("executed"):
-                skill_live_summary = (
-                    f"技能点击: {live_skill.get('skill_id')} @ "
-                    f"{live_skill.get('screen_click')} -> {live_skill.get('screen_target_click')}"
-                )
-            else:
-                skill_live_summary = f"技能点击: {live_skill.get('reason')}"
-        self.summary_var.set(
-            "\n".join(
-                line for line in [
-                    f"阶段: {state['phase']}    时间: {state['time']}s    费用: {state['cost']}    原点: {state['capture_origin']}",
-                    f"动作: {action['action']}",
-                    f"原因: {action['reason']}",
-                    f"卡牌: {hand_summary}",
-                    f"技能: {skill_summary}    本次: {action['skill_id']}",
-                    f"战场目标: {battlefield_summary}",
-                    f"窗口内: {action['pre_clicks']} / {action['click']} / {action['target_click']}",
-                    f"屏幕上: {action['screen_pre_clicks']} / {action['screen_click']} / {action['screen_target_click']}",
-                    live_summary,
-                    skill_live_summary,
-                ] if line
-            )
-        )
+        self._update_dashboard_cards(payload)
+        self._update_last_action(action, live_play_card, live_skill)
         if image and update_preview:
             self._last_annotated = image
             self._display_image(image)
         if live_play_card and live_play_card.get("executed"):
-            self.status_var.set(f"已点击手牌 {live_play_card.get('card_id')} | log: {self.logger.dir}")
+            self.status_var.set(f"已点击手牌 {live_play_card.get('card_id')}")
         elif live_skill and live_skill.get("executed"):
-            self.status_var.set(f"已释放技能 {live_skill.get('skill_id')} | log: {self.logger.dir}")
+            self.status_var.set(f"已释放技能 {live_skill.get('skill_id')}")
         else:
-            self.status_var.set(f"识别完成 | log: {self.logger.dir}")
+            self.status_var.set("识别完成")
+
+    def _update_dashboard_cards(self, payload: dict[str, Any]) -> None:
+        state = payload.get("state", {})
+        self.time_value_var.set(str(state.get("time", "--")))
+        self.cost_value_var.set(str(state.get("cost", "--")))
+        self.phase_value_var.set(f"阶段: {state.get('phase', '--')}")
+
+        visible_by_slot = {str(item.get("slot")): item for item in state.get("visible_cards", [])}
+        playable = state.get("hand_slot_playable", {})
+        diagnostics = (
+            payload.get("vision_diagnostics", {})
+            .get("hand_card_diagnostics", {})
+            .get("slots", {})
+        )
+        for index, vars_for_card in enumerate(self.hand_card_vars, start=1):
+            slot_name = f"hand_{index}"
+            item = visible_by_slot.get(slot_name)
+            slot_diag = diagnostics.get(slot_name, {})
+            slot_playable = playable.get(slot_name)
+            vars_for_card["title"].set(f"手牌 {index}")
+            if item:
+                vars_for_card["name"].set(str(item.get("name") or item.get("card_id") or "未知卡牌"))
+                vars_for_card["confidence"].set(_format_confidence(item.get("confidence")))
+                if slot_playable is False:
+                    vars_for_card["state"].set("灰牌")
+                    self.hand_status_labels[index - 1].configure(style="CardStateMuted.TLabel")
+                else:
+                    vars_for_card["state"].set("可用")
+                    self.hand_status_labels[index - 1].configure(style="CardStateReady.TLabel")
+                continue
+
+            vars_for_card["name"].set("未识别")
+            vars_for_card["confidence"].set(_format_confidence(slot_diag.get("confidence")))
+            if slot_diag.get("playable") is False or slot_playable is False:
+                vars_for_card["state"].set("灰牌")
+                self.hand_status_labels[index - 1].configure(style="CardStateMuted.TLabel")
+            else:
+                vars_for_card["state"].set("空位/未知")
+                self.hand_status_labels[index - 1].configure(style="CardStateWarn.TLabel")
+
+        seen_skills: set[str] = set()
+        for skill in state.get("skills", []):
+            skill_id = str(skill.get("skill_id"))
+            vars_for_skill = self.skill_card_vars.get(skill_id)
+            if vars_for_skill is None:
+                continue
+            seen_skills.add(skill_id)
+            vars_for_skill["title"].set(skill_id)
+            vars_for_skill["name"].set(str(skill.get("name") or skill_id))
+            vars_for_skill["confidence"].set(_format_confidence(skill.get("confidence")))
+            status_label = self.skill_status_labels[skill_id]
+            if bool(skill.get("ready")):
+                vars_for_skill["state"].set("就绪")
+                status_label.configure(style="CardStateReady.TLabel")
+                continue
+            diagnostics = skill.get("diagnostics") if isinstance(skill.get("diagnostics"), dict) else {}
+            if diagnostics.get("live_skill_suppressed"):
+                vars_for_skill["state"].set("确认中")
+                status_label.configure(style="CardStateWarn.TLabel")
+            elif skill.get("confidence", 0) == 0 and not diagnostics:
+                vars_for_skill["state"].set("未启用")
+                status_label.configure(style="CardStateMuted.TLabel")
+            else:
+                vars_for_skill["state"].set("冷却")
+                status_label.configure(style="CardStateMuted.TLabel")
+
+        for skill_id, vars_for_skill in self.skill_card_vars.items():
+            if skill_id in seen_skills:
+                continue
+            vars_for_skill["state"].set("未识别")
+            vars_for_skill["confidence"].set("--")
+            self.skill_status_labels[skill_id].configure(style="CardStateDanger.TLabel")
+
+    def _update_last_action(
+        self,
+        action: dict[str, Any],
+        live_play_card: dict[str, Any] | None,
+        live_skill: dict[str, Any] | None,
+    ) -> None:
+        if live_play_card and live_play_card.get("executed"):
+            self.last_action_var.set(f"手牌执行: {live_play_card.get('card_id')}")
+        elif live_skill and live_skill.get("executed"):
+            self.last_action_var.set(f"技能执行: {live_skill.get('skill_id')}")
+        elif action.get("action") == "wait":
+            self.last_action_var.set("等待下一次可执行动作")
+        elif action.get("card_id"):
+            self.last_action_var.set(f"准备手牌: {action.get('card_id')}")
+        elif action.get("skill_id"):
+            self.last_action_var.set(f"准备技能: {action.get('skill_id')}")
+        else:
+            self.last_action_var.set("识别运行中")
 
     def _should_update_result_preview(self, payload: dict[str, Any]) -> bool:
         continuous = payload.get("continuous", {})
