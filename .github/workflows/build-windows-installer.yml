@@ -42,28 +42,23 @@ jobs:
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           & $iscc /DMyAppVersion="$version" packaging\inno\LagrangeStarHunter.iss
 
+      - name: Show installer output
+        shell: pwsh
+        run: Get-ChildItem dist\installer -Force
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: LagrangeStarHunterSetup
           path: dist/installer/*.exe
 
-      - name: Create or update GitHub release
+      - name: Create GitHub release
         if: github.ref_type == 'tag'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $files = Get-ChildItem dist\installer\*.exe | ForEach-Object { $_.FullName }
-          $notes = @"
-          下载 LagrangeStarHunterSetup 安装器后，按提示点击“下一步”安装即可。
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Lagrange Star Hunter ${{ github.ref_name }}
+          files: dist/installer/*.exe
+          body: |
+            下载 LagrangeStarHunterSetup 安装器后，按提示点击 Next/下一步安装即可。
 
-          安装完成后，可以从桌面快捷方式或开始菜单启动“拉格朗日星际猎人自动化面板”。
-          "@
-
-          gh release view $env:GITHUB_REF_NAME *> $null
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload $env:GITHUB_REF_NAME $files --clobber
-          } else {
-            gh release create $env:GITHUB_REF_NAME $files --title "Lagrange Star Hunter $env:GITHUB_REF_NAME" --notes $notes
-          }
+            安装完成后，可以从桌面快捷方式或开始菜单启动“拉格朗日星际猎人自动化面板”。
