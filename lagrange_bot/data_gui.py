@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .windowing import WindowInfo, enable_dpi_awareness, list_visible_windows
+from .windowing import WindowInfo, enable_dpi_awareness, list_visible_windows, set_window_topmost
 
 enable_dpi_awareness()
 
@@ -53,6 +53,7 @@ class LagrangeDataGui(tk.Tk):
         self._queue: queue.Queue[tuple[str, Any]] = queue.Queue()
         self._process: subprocess.Popen[str] | None = None
         self._reader_thread: threading.Thread | None = None
+        self._capture_hwnd: int | None = None
 
         self._build_ui()
         self.refresh_windows_clicked()
@@ -272,6 +273,7 @@ class LagrangeDataGui(tk.Tk):
 
         output_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir_var.set(str(output_dir))
+        self._capture_hwnd = window.hwnd
         self._append_log(f"$ {' '.join(command)}\n")
         try:
             env = dict(os.environ)
@@ -290,6 +292,7 @@ class LagrangeDataGui(tk.Tk):
         except Exception as exc:
             messagebox.showerror("启动失败", str(exc))
             self._process = None
+            self._clear_capture_window_topmost()
             return
 
         self.status_var.set(f"采集中 pid={self._process.pid}")
@@ -304,6 +307,7 @@ class LagrangeDataGui(tk.Tk):
             return
         self.status_var.set("正在停止...")
         process.terminate()
+        self._clear_capture_window_topmost()
         self.after(1500, self._kill_if_still_running)
 
     def open_output_clicked(self) -> None:
@@ -321,6 +325,7 @@ class LagrangeDataGui(tk.Tk):
         process = self._process
         if process is not None and process.poll() is None:
             process.kill()
+        self._clear_capture_window_topmost()
 
     def _read_process_output(self) -> None:
         process = self._process
@@ -370,10 +375,22 @@ class LagrangeDataGui(tk.Tk):
         self.status_var.set("采集完成" if returncode == 0 else f"采集结束 code={returncode}")
         self._append_log(f"\n[process exited with code {returncode}]\n")
         self._process = None
+        self._clear_capture_window_topmost()
 
     def _append_log(self, text: str) -> None:
         self.log_text.insert("end", text)
         self.log_text.see("end")
+
+    def _clear_capture_window_topmost(self) -> None:
+        hwnd = self._capture_hwnd
+        if hwnd is None:
+            return
+        self._capture_hwnd = None
+        try:
+            set_window_topmost(hwnd, False)
+            self._append_log(f"[topmost disabled hwnd={hwnd}]\n")
+        except Exception as exc:
+            self._append_log(f"[topmost disable failed hwnd={hwnd}: {exc}]\n")
 
     def destroy(self) -> None:
         process = self._process
@@ -382,6 +399,7 @@ class LagrangeDataGui(tk.Tk):
                 process.terminate()
             except Exception:
                 pass
+        self._clear_capture_window_topmost()
         super().destroy()
 
 

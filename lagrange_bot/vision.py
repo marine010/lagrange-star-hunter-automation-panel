@@ -144,7 +144,9 @@ class ScreenReader:
         self.last_timer_read_source: str | None = None
         self.last_timer_stabilizer: dict[str, Any] = {}
         self._card_title_templates: dict[str, list[str]] | None = None
+        self._card_title_templates_key: tuple[Any, ...] | None = None
         self._card_templates: dict[str, str] | None = None
+        self._card_templates_key: tuple[Any, ...] | None = None
         self._battlefield_search_rect_cache: dict[str, tuple[tuple[int, int, int, int], dict[str, Any]]] = {}
         self._slot_card_cache: dict[str, dict[str, Any]] = {}
         self._stable_timer_seconds: float | None = None
@@ -628,12 +630,21 @@ class ScreenReader:
             "full_match_fallback": bool(self.config.screen.get("card_full_match_fallback", True)),
             "interval_seconds": self._hand_card_read_interval_seconds(),
             "interval_frames": self._hand_card_read_interval_frames(),
+            "active_card_ids": None,
+            "active_card_count": len(self.config.cards),
+            "title_template_count": 0,
             "cache_hits": 0,
             "negative_cache_hits": 0,
             "title_reads": 0,
             "full_match_reads": 0,
             "slots": {},
         }
+        active_card_ids = self._active_card_ids()
+        title_templates = self._get_card_title_templates()
+        if active_card_ids is not None:
+            diagnostics["active_card_ids"] = sorted(active_card_ids)
+            diagnostics["active_card_count"] = len(active_card_ids)
+        diagnostics["title_template_count"] = sum(len(paths) for paths in title_templates.values())
         for slot in self._hand_slots_for_offset(offset_y):
             playable = bool(hand_slot_playable.get(slot.name, False))
             fingerprint = self._slot_fingerprint(image, slot.rect)
@@ -721,6 +732,10 @@ class ScreenReader:
         cached = self._slot_card_cache.get(slot.name)
         if not cached:
             return None, "missing"
+        card_id = cached.get("card_id")
+        active_card_ids = self._active_card_ids()
+        if card_id is not None and active_card_ids is not None and str(card_id) not in active_card_ids:
+            return None, "filtered_card"
         if tuple(cached.get("fingerprint", ())) != fingerprint:
             return None, "fingerprint_changed"
         if cached.get("offset_y") is not None and int(cached.get("offset_y")) != int(offset_y):
@@ -843,19 +858,25 @@ class ScreenReader:
         )
 
     def _get_card_title_templates(self) -> dict[str, list[str]]:
-        if self._card_title_templates is not None:
-            return self._card_title_templates
-        directories: list[Path] = []
+        active_card_ids = self._active_card_ids()
+        active_key = None if active_card_ids is None else tuple(sorted(active_card_ids))
+        directory_keys: list[str] = []
         for key, default in (
             ("card_title_live_templates_dir", "templates/card_titles_live"),
             ("card_title_templates_dir", "templates/card_titles"),
         ):
             configured = self.config.matcher.get(key, default)
             if configured:
-                directories.append(self.config.root / str(configured))
+                directory_keys.append(str((self.config.root / str(configured)).resolve()))
+        cache_key = (tuple(directory_keys), active_key)
+        if self._card_title_templates is not None and self._card_title_templates_key == cache_key:
+            return self._card_title_templates
+        directories = [Path(text) for text in directory_keys]
 
         templates: dict[str, list[str]] = {}
         for card_id in self.config.cards:
+            if active_card_ids is not None and card_id not in active_card_ids:
+                continue
             paths: list[str] = []
             for directory in directories:
                 if not directory.exists():
@@ -867,6 +888,7 @@ class ScreenReader:
             if paths:
                 templates[card_id] = paths
         self._card_title_templates = templates
+        self._card_title_templates_key = cache_key
         return self._card_title_templates
 
     def _read_reserve(self, image: Any, offset_y: int = 0) -> str | None:
@@ -882,10 +904,30 @@ class ScreenReader:
         return match.item_id if match else None
 
     def _get_card_templates(self) -> dict[str, str]:
-        if self._card_templates is not None:
+        active_card_ids = self._active_card_ids()
+        active_key = None if active_card_ids is None else tuple(sorted(active_card_ids))
+        cache_key = (str(self.config.path), active_key)
+        if self._card_templates is not None and self._card_templates_key == cache_key:
             return self._card_templates
-        self._card_templates = {card.id: card.template for card in self.config.cards.values()}
+        self._card_templates = {
+            card.id: card.template
+            for card in self.config.cards.values()
+            if active_card_ids is None or card.id in active_card_ids
+        }
+        self._card_templates_key = cache_key
         return self._card_templates
+
+    def _active_card_ids(self) -> set[str] | None:
+        raw = self.config.matcher.get("active_card_ids")
+        if raw is None:
+            return None
+        if isinstance(raw, str):
+            values = [item.strip() for item in raw.split(",")]
+        elif isinstance(raw, (list, tuple, set)):
+            values = [str(item).strip() for item in raw]
+        else:
+            return None
+        return {item for item in values if item and item in self.config.cards}
 
     def _get_skill_templates(self) -> dict[str, str]:
         return {

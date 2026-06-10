@@ -380,6 +380,106 @@
       "priority": 40,
       "max_plays": 99,
       "conditions": {}
+    },
+    {
+      "id": "yunhai",
+      "name": "云海级",
+      "cost": 20,
+      "row": "unknown",
+      "template": "templates/cards/yunhai.png",
+      "priority": 15,
+      "max_plays": 99,
+      "conditions": {}
+    },
+    {
+      "id": "m470_siege",
+      "name": "M470攻城型",
+      "cost": 20,
+      "row": "unknown",
+      "template": "templates/cards/m470_siege.png",
+      "priority": 12,
+      "max_plays": 99,
+      "conditions": {}
+    },
+    {
+      "id": "ac72_carrier",
+      "name": "AC72载机型",
+      "cost": 0,
+      "row": "unknown",
+      "template": "templates/cards/ac72_carrier.png",
+      "priority": 0,
+      "max_plays": 0,
+      "conditions": {}
+    },
+    {
+      "id": "ac72_general",
+      "name": "AC72通用型",
+      "cost": 0,
+      "row": "unknown",
+      "template": "templates/cards/ac72_general.png",
+      "priority": 0,
+      "max_plays": 0,
+      "conditions": {}
+    },
+    {
+      "id": "ac72_ion_cannon",
+      "name": "AC72离子炮型",
+      "cost": 0,
+      "row": "unknown",
+      "template": "templates/cards/ac72_ion_cannon.png",
+      "priority": 0,
+      "max_plays": 0,
+      "conditions": {}
+    },
+    {
+      "id": "cv3000",
+      "name": "CV3000级",
+      "cost": 0,
+      "row": "unknown",
+      "template": "templates/cards/cv3000.png",
+      "priority": 0,
+      "max_plays": 0,
+      "conditions": {}
+    },
+    {
+      "id": "new_constantine",
+      "name": "新君士坦丁大帝级",
+      "cost": 0,
+      "row": "unknown",
+      "template": "templates/cards/new_constantine.png",
+      "priority": 0,
+      "max_plays": 0,
+      "conditions": {}
+    },
+    {
+      "id": "io",
+      "name": "艾奥级",
+      "cost": 0,
+      "row": "unknown",
+      "template": "templates/cards/io.png",
+      "priority": 0,
+      "max_plays": 0,
+      "conditions": {}
+    },
+    {
+      "id": "solar_whale",
+      "name": "太阳鲸级",
+      "cost": 0,
+      "row": "unknown",
+      "template": "templates/cards/solar_whale.png",
+      "priority": 0,
+      "max_plays": 0,
+      "conditions": {}
+    },
+    {
+      "id": "chimera_artillery",
+      "name": "奇美拉弹炮型",
+      "cost": 0,
+      "row": "unknown",
+      "template": "templates/cards/chimera_artillery.png",
+      "priority": 0,
+      "max_plays": 0,
+      "conditions": {}
     }
   ],
   "policy": {
@@ -400,7 +500,9 @@
         "rainsea_assault",
         "stingray",
         "reliat",
-        "eris"
+        "eris",
+        "yunhai",
+        "m470_siege"
       ],
       "wait_for_unaffordable_priority": true,
       "extra_place_wait_for_unaffordable_priority": false,

@@ -488,6 +488,12 @@ class LagrangeTestGui(tk.Tk):
         self.live_skill_var = tk.BooleanVar(value=True)
         self.hand_training_var = tk.BooleanVar(value=False)
         self.battle_training_var = tk.BooleanVar(value=False)
+        self.deck_selected_count_var = tk.StringVar(value="")
+        self.deck_card_vars: dict[str, tk.BooleanVar] = {}
+        self.deck_card_buttons: list[tk.Checkbutton] = []
+        self.deck_card_order: list[str] = []
+        self.deck_selector_frame: ttk.Frame | None = None
+        self._active_deck_card_ids: list[str] | None = None
 
         self._queue: queue.Queue[tuple[str, Any]] = queue.Queue()
         self._photo: ImageTk.PhotoImage | None = None
@@ -535,7 +541,7 @@ class LagrangeTestGui(tk.Tk):
     def _build_ui(self) -> None:
         self.configure(background="#0f172a")
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
         self._build_styles()
 
         controls = ttk.Frame(self, padding=(8, 6), style="Top.TFrame")
@@ -568,8 +574,12 @@ class LagrangeTestGui(tk.Tk):
             command=self.toggle_battle_training_clicked,
         )
 
+        self.deck_selector_frame = ttk.Frame(self, padding=(8, 0, 8, 6), style="App.TFrame")
+        self.deck_selector_frame.grid(row=1, column=0, sticky="ew")
+        self._build_deck_selector()
+
         dashboard = ttk.Frame(self, padding=(8, 8), style="App.TFrame")
-        dashboard.grid(row=1, column=0, sticky="nsew")
+        dashboard.grid(row=2, column=0, sticky="nsew")
         dashboard.columnconfigure(0, weight=1)
         dashboard.columnconfigure(1, weight=1)
         dashboard.rowconfigure(1, weight=1)
@@ -628,6 +638,159 @@ class LagrangeTestGui(tk.Tk):
         self._enable_default_automation()
         self.status_var.set("就绪")
 
+    def _build_deck_selector(self) -> None:
+        parent = self.deck_selector_frame
+        if parent is None:
+            return
+        for child in parent.winfo_children():
+            child.destroy()
+        self.deck_card_buttons = []
+        previous = {card_id: var.get() for card_id, var in self.deck_card_vars.items()}
+        self.deck_card_vars = {}
+        self.deck_card_order = []
+
+        panel = ttk.Frame(parent, style="Panel.TFrame", padding=(8, 6))
+        panel.grid(row=0, column=0, sticky="ew")
+        panel.columnconfigure(0, weight=1)
+
+        header = ttk.Frame(panel, style="Panel.TFrame")
+        header.grid(row=0, column=0, sticky="ew")
+        header.columnconfigure(1, weight=1)
+        ttk.Label(header, text="战前卡组", style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(header, textvariable=self.deck_selected_count_var, style="DeckMeta.TLabel").grid(
+            row=0,
+            column=1,
+            sticky="e",
+            padx=(8, 8),
+        )
+        ttk.Button(header, text="全选", command=self._select_all_deck_cards, style="Compact.TButton").grid(
+            row=0,
+            column=2,
+            padx=(0, 4),
+        )
+        ttk.Button(header, text="清空", command=self._clear_deck_cards, style="Compact.TButton").grid(row=0, column=3)
+
+        cards = self._deck_card_catalog()
+        if not cards:
+            self.deck_selected_count_var.set("未找到手牌标题模板")
+            ttk.Label(panel, text="未找到可选择的手牌模板", style="DeckMeta.TLabel").grid(
+                row=1,
+                column=0,
+                sticky="w",
+                pady=(4, 0),
+            )
+            return
+
+        grid = ttk.Frame(panel, style="Panel.TFrame")
+        grid.grid(row=1, column=0, sticky="ew", pady=(4, 0))
+        columns = 3
+        for column in range(columns):
+            grid.columnconfigure(column, weight=1, uniform="deck")
+
+        for index, item in enumerate(cards):
+            card_id = str(item["id"])
+            var = tk.BooleanVar(value=previous.get(card_id, True))
+            var.trace_add("write", lambda *_args: self._update_deck_selected_count())
+            self.deck_card_vars[card_id] = var
+            self.deck_card_order.append(card_id)
+            text = str(item["name"])
+            button = tk.Checkbutton(
+                grid,
+                text=text,
+                variable=var,
+                anchor="w",
+                bg="#f8fafc",
+                activebackground="#f8fafc",
+                fg="#0f172a",
+                selectcolor="#ffffff",
+                font=("Microsoft YaHei UI", 8),
+                padx=2,
+                pady=1,
+                wraplength=170,
+            )
+            button.grid(row=index // columns, column=index % columns, sticky="ew", padx=(0, 6), pady=1)
+            self.deck_card_buttons.append(button)
+        self._update_deck_selected_count()
+
+    def _deck_card_catalog(self) -> list[dict[str, Any]]:
+        try:
+            config = self._load_config()
+            templates = ScreenReader(config)._get_card_title_templates()
+        except Exception as exc:
+            self.logger.event("deck_selector_load_error", {"error": str(exc)})
+            return []
+        cards: list[dict[str, Any]] = []
+        for card_id, card in config.cards.items():
+            template_paths = templates.get(card_id, [])
+            if not template_paths:
+                continue
+            cards.append(
+                {
+                    "id": card_id,
+                    "name": card.name,
+                    "template_count": len(template_paths),
+                }
+            )
+        return cards
+
+    def _selected_deck_card_ids(self) -> list[str]:
+        selected: list[str] = []
+        for card_id in self.deck_card_order:
+            var = self.deck_card_vars.get(card_id)
+            if var is not None and var.get():
+                selected.append(card_id)
+        return selected
+
+    def _update_deck_selected_count(self) -> None:
+        selected = len(self._selected_deck_card_ids())
+        total = len(self.deck_card_order)
+        self.deck_selected_count_var.set(f"已选 {selected}/{total}")
+
+    def _select_all_deck_cards(self) -> None:
+        for var in self.deck_card_vars.values():
+            var.set(True)
+        self._update_deck_selected_count()
+
+    def _clear_deck_cards(self) -> None:
+        for var in self.deck_card_vars.values():
+            var.set(False)
+        self._update_deck_selected_count()
+
+    def _set_deck_selector_running(self, running: bool) -> None:
+        state = tk.DISABLED if running else tk.NORMAL
+        for button in self.deck_card_buttons:
+            button.configure(state=state)
+        if self.deck_selector_frame is None:
+            return
+        if running:
+            self.deck_selector_frame.grid_remove()
+        else:
+            self.deck_selector_frame.grid()
+
+    def _require_selected_deck(self) -> list[str] | None:
+        selected = self._selected_deck_card_ids()
+        if selected:
+            return selected
+        self.logger.event("deck_selection_empty")
+        messagebox.showinfo("需要卡组", "请至少选择一张手牌模板后再开始识别。")
+        return None
+
+    def _apply_selected_deck(self, config: BotConfig) -> BotConfig:
+        selected = self._active_deck_card_ids if self._active_deck_card_ids is not None else self._selected_deck_card_ids()
+        config.matcher["active_card_ids"] = list(selected)
+        return config
+
+    def _deck_selection_payload(self, config: BotConfig | None = None) -> dict[str, Any]:
+        selected = self._active_deck_card_ids if self._active_deck_card_ids is not None else self._selected_deck_card_ids()
+        names: dict[str, str] = {}
+        if config is not None:
+            names = {card_id: config.cards[card_id].name for card_id in selected if card_id in config.cards}
+        return {
+            "card_ids": list(selected),
+            "card_count": len(selected),
+            "card_names": names,
+        }
+
     def _build_styles(self) -> None:
         style = ttk.Style(self)
         try:
@@ -652,7 +815,9 @@ class LagrangeTestGui(tk.Tk):
         style.configure("CardStateWarn.TLabel", background="#ffffff", foreground="#d97706", font=("Microsoft YaHei UI", 8, "bold"))
         style.configure("CardStateDanger.TLabel", background="#ffffff", foreground="#dc2626", font=("Microsoft YaHei UI", 8, "bold"))
         style.configure("CardMeta.TLabel", background="#ffffff", foreground="#64748b", font=("Microsoft YaHei UI", 7))
+        style.configure("DeckMeta.TLabel", background="#f8fafc", foreground="#64748b", font=("Microsoft YaHei UI", 7))
         style.configure("Accent.TButton", font=("Microsoft YaHei UI", 8, "bold"))
+        style.configure("Compact.TButton", font=("Microsoft YaHei UI", 7))
 
     def _build_metric_card(
         self,
@@ -704,6 +869,7 @@ class LagrangeTestGui(tk.Tk):
         if path:
             self.config_path_var.set(path)
             self.logger.event("config_selected", {"path": path})
+            self._build_deck_selector()
 
     def _browse_image(self) -> None:
         path = filedialog.askopenfilename(
@@ -827,6 +993,7 @@ class LagrangeTestGui(tk.Tk):
                 "phase_override": self.phase_override_var.get(),
                 "cost_override_enabled": self.cost_override_enabled.get(),
                 "cost_override": self.cost_override_var.get(),
+                "active_deck": self._deck_selection_payload(),
             },
         )
         thread = threading.Thread(target=self._worker_entry, args=(label, fn, args), daemon=True)
@@ -903,6 +1070,8 @@ class LagrangeTestGui(tk.Tk):
         return self._windows[index]
 
     def detect_window_clicked(self) -> None:
+        if not self._require_selected_deck():
+            return
         try:
             window = self._selected_window()
         except Exception as exc:
@@ -927,9 +1096,14 @@ class LagrangeTestGui(tk.Tk):
             return
 
         self._enable_default_automation()
+        selected_deck = self._require_selected_deck()
+        if selected_deck is None:
+            return
+        self._active_deck_card_ids = selected_deck
         try:
             window = self._selected_window()
         except Exception as exc:
+            self._active_deck_card_ids = None
             self.logger.event("continuous_window_select_error", {"error": str(exc)})
             messagebox.showinfo("需要窗口", str(exc))
             return
@@ -949,6 +1123,7 @@ class LagrangeTestGui(tk.Tk):
         stop_wgc_sessions()
         self._set_capture_window_topmost(window)
         self.continuous_window_var.set(True)
+        self._set_deck_selector_running(True)
         self.continuous_button.configure(text="停止识别")
         options = self._continuous_screen_options()
         self.logger.event(
@@ -961,6 +1136,7 @@ class LagrangeTestGui(tk.Tk):
                 "save_images": options["save_images"],
                 "save_every_n": options["save_every_n"],
                 "preview_every_n": options["preview_every_n"],
+                "active_deck": self._deck_selection_payload(),
                 "trigger": trigger,
                 "hwnd": window.hwnd,
                 "title": window.title,
@@ -985,12 +1161,14 @@ class LagrangeTestGui(tk.Tk):
             self._continuous_after_id = None
         self._continuous_window = None
         self._continuous_reader = None
+        self._active_deck_card_ids = None
         self._continuous_last_processing_ms = None
         self._continuous_last_delay_ms = 0
         self._last_continuous_capture_rect = None
         self._last_continuous_rect_change_monotonic = None
         self._opening_zoom_active = False
         self.continuous_button.configure(text="开始识别")
+        self._set_deck_selector_running(False)
         stop_wgc_sessions()
         self._clear_capture_window_topmost()
         self.logger.event(
@@ -1563,7 +1741,7 @@ class LagrangeTestGui(tk.Tk):
         return False
 
     def _detect_window_worker(self, window: WindowInfo) -> tuple[str, dict[str, Any], Image.Image | None]:
-        config = self._load_config()
+        config = self._apply_selected_deck(self._load_config())
         window = get_window(window.hwnd)
         if self.continuous_window_var.get():
             if self._continuous_reader is None:
@@ -1600,7 +1778,7 @@ class LagrangeTestGui(tk.Tk):
         )
 
     def _detect_worker(self, image_path: Path | None, capture: bool) -> tuple[str, dict[str, Any], Image.Image | None]:
-        config = self._load_config()
+        config = self._apply_selected_deck(self._load_config())
         reader = ScreenReader(config)
         if capture:
             image = reader.capture()
@@ -1642,6 +1820,7 @@ class LagrangeTestGui(tk.Tk):
         timings: dict[str, float] | None = None,
     ) -> tuple[str, dict[str, Any], Image.Image | None]:
         config = config or self._load_config()
+        config = self._apply_selected_deck(config)
         reader = reader or ScreenReader(config)
         timings = dict(timings or {})
         total_started = time.perf_counter()
@@ -1702,6 +1881,7 @@ class LagrangeTestGui(tk.Tk):
                 "cost_enabled": self.cost_override_enabled.get(),
                 "cost": self.cost_override_var.get().strip() if self.cost_override_enabled.get() else None,
             },
+            "active_deck": self._deck_selection_payload(config),
             "screen_timer_seconds": reader.last_match_timer_seconds,
             "raw_timer_seconds": reader.last_raw_timer_seconds,
             "vision_diagnostics": {

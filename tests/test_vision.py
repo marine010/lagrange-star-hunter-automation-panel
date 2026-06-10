@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -117,6 +118,135 @@ class VisionTests(unittest.TestCase):
 
         self.assertEqual(len(templates["card_a"]), 2)
         self.assertTrue(templates["card_a"][0].endswith("card_a_01.png"))
+
+    def test_active_card_ids_filter_title_templates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_dir = root / "configs"
+            config_dir.mkdir()
+            live_dir = root / "templates" / "card_titles_live"
+            live_dir.mkdir(parents=True)
+            (live_dir / "card_a_01.png").write_bytes(b"sample-a")
+            (live_dir / "card_b_01.png").write_bytes(b"sample-b")
+            path = config_dir / "sample_config.json"
+            data = json.loads(json.dumps(SAMPLE))
+            data["matcher"]["card_title_live_templates_dir"] = "templates/card_titles_live"
+            data["matcher"]["card_title_templates_dir"] = ""
+            data["matcher"]["active_card_ids"] = ["card_b"]
+            data["cards"].append(
+                {
+                    "id": "card_b",
+                    "name": "Card B",
+                    "cost": 10,
+                    "row": "front",
+                    "template": "card_b.png",
+                }
+            )
+            path.write_text(json.dumps(data), encoding="utf-8")
+            config = BotConfig.load(path)
+            reader = ScreenReader(config)
+
+            templates = reader._get_card_title_templates()
+
+            self.assertEqual(set(templates), {"card_b"})
+
+            config.matcher["active_card_ids"] = ["card_a"]
+            templates = reader._get_card_title_templates()
+
+            self.assertEqual(set(templates), {"card_a"})
+
+    def test_active_card_ids_filter_full_card_templates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_dir = root / "configs"
+            config_dir.mkdir()
+            path = config_dir / "sample_config.json"
+            data = json.loads(json.dumps(SAMPLE))
+            data["matcher"]["active_card_ids"] = ["card_b"]
+            data["cards"].append(
+                {
+                    "id": "card_b",
+                    "name": "Card B",
+                    "cost": 10,
+                    "row": "front",
+                    "template": "card_b.png",
+                }
+            )
+            path.write_text(json.dumps(data), encoding="utf-8")
+            config = BotConfig.load(path)
+            reader = ScreenReader(config)
+
+            templates = reader._get_card_templates()
+
+            self.assertEqual(set(templates), {"card_b"})
+
+    def test_active_card_ids_ignore_filtered_slot_cache(self):
+        config = self.make_config()
+        config.cards["card_b"] = config.cards["card_a"]
+        config.matcher["active_card_ids"] = ["card_a"]
+        reader = ScreenReader(config)
+        reader._slot_card_cache["h1"] = {
+            "fingerprint": tuple([1] * 64),
+            "card_id": "card_b",
+            "confidence": 0.99,
+            "offset_y": 0,
+            "read_frame": 0,
+            "read_monotonic": time.monotonic(),
+        }
+
+        cached, reason = reader._cached_card_identity_for_slot(
+            config.hand_slots[0],
+            fingerprint=tuple([1] * 64),
+            offset_y=0,
+            now_monotonic=time.monotonic(),
+        )
+
+        self.assertIsNone(cached)
+        self.assertEqual(reason, "filtered_card")
+
+    def test_star_hunter_new_card_templates_are_configured(self):
+        root = Path(__file__).parent.parent
+        config = BotConfig.load(root / "configs" / "star_hunter_1920.json")
+        reader = ScreenReader(config)
+
+        templates = reader._get_card_title_templates()
+
+        expected = {
+            "yunhai": ("云海级", 5, False),
+            "m470_siege": ("M470攻城型", 5, False),
+            "ac72_carrier": ("AC72载机型", 4, True),
+            "ac72_general": ("AC72通用型", 3, True),
+            "ac72_ion_cannon": ("AC72离子炮型", 3, True),
+            "cv3000": ("CV3000级", 4, True),
+            "new_constantine": ("新君士坦丁大帝级", 4, True),
+            "io": ("艾奥级", 4, True),
+            "solar_whale": ("太阳鲸级", 4, True),
+            "chimera_artillery": ("奇美拉弹炮型", 5, True),
+        }
+        for card_id, (name, template_count, recognition_only) in expected.items():
+            self.assertIn(card_id, config.cards)
+            self.assertEqual(config.cards[card_id].name, name)
+            self.assertEqual(len(templates[card_id]), template_count)
+            self.assertTrue(Path(config.cards[card_id].template).exists(), card_id)
+            for path in templates[card_id]:
+                self.assertTrue(Path(path).exists(), path)
+                with Image.open(path) as image:
+                    self.assertEqual(image.size, (102, 24), path)
+            if recognition_only:
+                self.assertEqual(config.cards[card_id].cost, 0)
+                self.assertEqual(config.cards[card_id].priority, 0)
+                self.assertEqual(config.cards[card_id].max_plays, 0)
+
+    def test_star_hunter_live_title_templates_are_text_core_crops(self):
+        root = Path(__file__).parent.parent
+        title_dir = root / "templates" / "card_titles_live_current"
+
+        template_paths = sorted(title_dir.glob("*.png"))
+
+        self.assertGreater(len(template_paths), 0)
+        for path in template_paths:
+            with Image.open(path) as image:
+                self.assertEqual(image.size, (102, 24), path)
 
     def test_unaffordable_matched_card_is_not_visible(self):
         config = self.make_config()
