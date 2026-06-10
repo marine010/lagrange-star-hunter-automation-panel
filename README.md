@@ -26,43 +26,120 @@
 - 当前版本包含技能目标刷新 fallback 修复：
   当实时释放技能前无法确认足够数量的 CAS066 标签，但本次动作已经有配置或决策给出的兜底目标点时，程序会继续释放技能，并在日志中记录 `target_confirmation_unverified`。
 
-## 安装
+## 下载后先看这里
 
-### 新手最快启动
+这个仓库当前发布的是**源码版**，不是双击 exe 就能运行的绿色软件。电脑上必须先安装 Python，然后再用项目里的 `.bat` 脚本启动 GUI。
 
-1. 确认电脑已经安装 Python 3.12 或更新版本。
-2. 下载 GitHub 源码后，先把 zip 完整解压出来，不要在压缩包预览窗口里直接运行。
-3. 第一次运行双击 `INSTALL_AND_RUN.bat`，它会自动安装依赖并尝试打开主 GUI。
-4. 依赖装好以后，后续直接双击 `RUN_GUI.bat` 打开主 GUI。
+项目根目录里几个常用文件的作用：
 
-正常启动时会出现图形化窗口。如果只看到黑色命令行窗口，说明 GUI 没有成功启动或已经退出，请看下面的“常见问题”。
+- `INSTALL_AND_RUN.bat`：第一次使用时双击它。它会安装依赖，然后尝试打开主 GUI。
+- `RUN_GUI.bat`：依赖装好后，平时双击它打开主 GUI。
+- `RUN_DATA_GUI.bat`：数据采集界面，普通使用不用点它。
+- `requirements.txt`：Python 依赖列表，不需要手动打开。
+- `configs/`、`templates/`、`lagrange_bot/`：程序运行需要的文件夹，不要移动到别的地方。
+
+## 第一次安装和打开
+
+### 1. 安装 Python
+
+先安装 Python 3.12 或更新版本。安装时一定要勾选：
+
+```text
+Add python.exe to PATH
+```
+
+安装好以后，重新打开一个 PowerShell，输入：
+
+```powershell
+python --version
+```
+
+如果能看到类似 `Python 3.12.x` 的版本号，就说明 Python 可以用了。
+
+### 2. 下载并解压项目
+
+在 GitHub 页面点击 `Code` -> `Download ZIP` 下载源码包。
+
+下载后请注意：
+
+1. 右键 zip 文件，选择“全部解压”。
+2. 进入解压出来的文件夹，例如 `lagrange-star-hunter-automation-panel-main`。
+3. 确认能看到 `INSTALL_AND_RUN.bat`、`RUN_GUI.bat`、`configs`、`lagrange_bot`、`templates` 这些文件和文件夹。
+4. 不要在压缩包预览窗口里直接双击 `.bat`，必须先完整解压。
+
+### 3. 第一次启动
+
+第一次使用时，双击：
+
+```text
+INSTALL_AND_RUN.bat
+```
+
+它会做三件事：
+
+1. 检查电脑上是否能找到 Python。
+2. 自动安装 `requirements.txt` 里的依赖。
+3. 安装完成后打开主 GUI。
+
+第一次安装依赖可能比较慢，黑色命令行窗口里会刷很多英文日志，这是正常的。正常启动成功后，会弹出标题为“拉格朗日自动识别”的图形化窗口。
+
+## 以后怎么打开 GUI
+
+以后依赖已经装好时，直接双击：
+
+```text
+RUN_GUI.bat
+```
+
+正常情况会出现“拉格朗日自动识别”窗口。如果只出现黑色命令行窗口，没有出现图形化窗口，请看下面“常见问题”里的黑窗口排查。
+
+也可以用命令行启动。打开项目文件夹，在空白处按住 `Shift` 后右键，选择“在此处打开 PowerShell”，然后运行：
+
+```powershell
+python -m lagrange_bot.gui --config configs\star_hunter_1920.json
+```
+
+这个方式适合排查问题，因为报错会直接显示在 PowerShell 里。
+
+## 打开 GUI 后怎么用
+
+启动成功后，主窗口标题是“拉格朗日自动识别”。
+
+基本流程：
+
+1. 先打开游戏，并让游戏窗口保持可见。
+2. 回到 GUI 顶部的窗口下拉框，选择游戏窗口。
+3. 在“战前卡组”区域勾选本局使用的手牌；不确定时可以先点“全选”。
+4. 点击右上角“开始识别”。
+5. 开始后按钮会变成“停止识别”，界面会显示时间、费用、手牌、技能和最近动作。
+6. 想停止时，再点一次“停止识别”。
+
+注意事项：
+
+- 开始识别后，“战前卡组”区域会自动收起，这是正常现象。
+- 当前配置按 1920x1080 布局调试，游戏窗口大小和布局差太多时，识别可能不准。
+- 程序默认会启用自动放置手牌和技能释放逻辑。使用前请确认只在授权测试环境中运行。
+- 每次运行的日志会写到 `logs/gui_sessions/`，排查问题时优先看最新的 session 文件夹。
+
+## 手动安装方式
+
+如果不想用 `INSTALL_AND_RUN.bat`，也可以手动安装依赖：
+
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m lagrange_bot.gui --config configs\star_hunter_1920.json
+```
+
+如果你熟悉 Python 虚拟环境，也可以自己创建 `.venv` 后再安装：
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-```
-
-也可以第一次直接双击：
-
-```text
-INSTALL_AND_RUN.bat
-```
-
-## 启动
-
-```powershell
 python -m lagrange_bot.gui --config configs\star_hunter_1920.json
 ```
-
-依赖安装完成后，也可以双击：
-
-```text
-RUN_GUI.bat
-```
-
-启动后，在 GUI 中选择游戏窗口，并在“战前卡组”区域勾选本局使用的手牌，再开始识别。开始识别后卡组选择区会自动收起，界面只保留战斗状态信息。
 
 ## 常见问题
 
@@ -88,6 +165,16 @@ python -m lagrange_bot.gui --config configs\star_hunter_1920.json
 
 5. 把 PowerShell 中从报错开始到最后一行的内容截图或复制出来，方便定位问题。
 
+### 双击后窗口一闪而过
+
+通常也是启动时报错了，只是窗口关闭太快看不到。请不要直接双击排查，改用 PowerShell。
+
+最简单的方法：在项目文件夹空白处按住 `Shift` 后右键，选择“在此处打开 PowerShell”，再运行：
+
+```powershell
+.\RUN_GUI.bat
+```
+
 ### 提示 Python was not found
 
 说明系统没有找到 Python。请安装 Python 3.12 或更新版本，并在安装时勾选 `Add python.exe to PATH`。安装完成后重新打开 PowerShell，运行：
@@ -97,6 +184,39 @@ python --version
 ```
 
 能看到版本号后，再运行 `INSTALL_AND_RUN.bat`。
+
+### 提示 No module named xxx
+
+说明依赖没有装完整。请在项目文件夹里打开 PowerShell，重新安装依赖：
+
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+安装完成后再运行：
+
+```powershell
+.\RUN_GUI.bat
+```
+
+### pip 安装很慢或失败
+
+可以换国内镜像安装：
+
+```powershell
+python -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+装完后再运行 `RUN_GUI.bat`。
+
+### GUI 打开了，但是窗口下拉框里没有游戏
+
+先确认游戏已经打开，并且不是最小化状态。然后点击窗口下拉框，它会刷新可见窗口列表。仍然找不到时，重启 GUI 和游戏再试。
+
+### GUI 打开了，但是识别不准
+
+当前公开配置主要按 `configs/star_hunter_1920.json` 的 1920x1080 布局调试。请尽量让游戏窗口使用相同布局，并先只观察识别结果，不要急着让它自动点击。日志和截图会保存在 `logs/gui_sessions/`，可以把最新 session 发给维护者排查。
 
 ## 数据采集界面
 
