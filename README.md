@@ -28,6 +28,15 @@
 
 ## 安装
 
+### 新手最快启动
+
+1. 确认电脑已经安装 Python 3.12 或更新版本。
+2. 下载 GitHub 源码后，先把 zip 完整解压出来，不要在压缩包预览窗口里直接运行。
+3. 第一次运行双击 `INSTALL_AND_RUN.bat`，它会自动安装依赖并尝试打开主 GUI。
+4. 依赖装好以后，后续直接双击 `RUN_GUI.bat` 打开主 GUI。
+
+正常启动时会出现图形化窗口。如果只看到黑色命令行窗口，说明 GUI 没有成功启动或已经退出，请看下面的“常见问题”。
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -54,6 +63,40 @@ RUN_GUI.bat
 ```
 
 启动后，在 GUI 中选择游戏窗口，并在“战前卡组”区域勾选本局使用的手牌，再开始识别。开始识别后卡组选择区会自动收起，界面只保留战斗状态信息。
+
+## 常见问题
+
+### 只出现黑色命令行窗口，并显示“请按任意键继续...”
+
+这不是 GUI。这个提示来自 `.bat` 文件最后的 `pause`，表示前面的启动命令已经结束。正常情况下应当弹出图形化窗口；如果只剩这个黑窗口，通常是 Python 没装好、依赖没装完整，或者 GUI 启动时报错后退出了。
+
+处理方法：
+
+1. 先不要按任意键关闭窗口，向上查看黑窗口里是否有报错信息。
+2. 如果第一次运行，请先双击 `INSTALL_AND_RUN.bat`，等待依赖安装完成。
+3. 如果仍然失败，在项目文件夹空白处按住 `Shift` 后右键，选择“在此处打开 PowerShell”，然后运行：
+
+```powershell
+.\RUN_GUI.bat
+```
+
+4. 如果想看到更完整的报错，也可以直接运行：
+
+```powershell
+python -m lagrange_bot.gui --config configs\star_hunter_1920.json
+```
+
+5. 把 PowerShell 中从报错开始到最后一行的内容截图或复制出来，方便定位问题。
+
+### 提示 Python was not found
+
+说明系统没有找到 Python。请安装 Python 3.12 或更新版本，并在安装时勾选 `Add python.exe to PATH`。安装完成后重新打开 PowerShell，运行：
+
+```powershell
+python --version
+```
+
+能看到版本号后，再运行 `INSTALL_AND_RUN.bat`。
 
 ## 数据采集界面
 
