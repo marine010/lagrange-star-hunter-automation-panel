@@ -25,6 +25,21 @@ def _is_wgc_backend(config: BotConfig) -> bool:
     return _capture_backend(config) in {"wgc", "windows_graphics_capture"}
 
 
+def _optional_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().casefold()
+    if text in {"", "none", "auto", "default", "null"}:
+        return None
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off"}:
+        return False
+    return None
+
+
 def capture_monitor_for_rect(
     config: BotConfig,
     left: int,
@@ -118,7 +133,8 @@ def _capture_imagegrab_region(monitor: dict[str, int]) -> Any:
 def _capture_wgc_window_region(window: WindowInfo, monitor: dict[str, int], config: BotConfig) -> Any:
     timeout_seconds = float(config.screen.get("wgc_frame_timeout_seconds", 3.0))
     update_interval_ms = max(16, int(config.screen.get("wgc_minimum_update_interval_ms", 250)))
-    session = _wgc_session_for_hwnd(window.hwnd, timeout_seconds, update_interval_ms)
+    draw_border = _optional_bool(config.screen.get("wgc_draw_border"))
+    session = _wgc_session_for_hwnd(window.hwnd, timeout_seconds, update_interval_ms, draw_border)
     frame = session.frame(timeout_seconds)
     crop_box = _wgc_crop_box(window, monitor, frame.size)
     cropped = frame.crop(crop_box)
@@ -128,14 +144,24 @@ def _capture_wgc_window_region(window: WindowInfo, monitor: dict[str, int], conf
     return cropped.convert("RGB")
 
 
-def _wgc_session_for_hwnd(hwnd: int, timeout_seconds: float, update_interval_ms: int) -> "_WgcWindowSession":
+def _wgc_session_for_hwnd(
+    hwnd: int,
+    timeout_seconds: float,
+    update_interval_ms: int,
+    draw_border: bool | None,
+) -> "_WgcWindowSession":
     with _WGC_SESSIONS_LOCK:
         session = _WGC_SESSIONS.get(hwnd)
-        if session is not None and not session.closed and session.update_interval_ms == update_interval_ms:
+        if (
+            session is not None
+            and not session.closed
+            and session.update_interval_ms == update_interval_ms
+            and session.requested_draw_border == draw_border
+        ):
             return session
         if session is not None:
             session.stop()
-        session = _WgcWindowSession(hwnd, timeout_seconds, update_interval_ms)
+        session = _WgcWindowSession(hwnd, timeout_seconds, update_interval_ms, draw_border)
         _WGC_SESSIONS[hwnd] = session
         return session
 
@@ -185,10 +211,30 @@ def _extended_frame_bounds(window: WindowInfo) -> tuple[int, int, int, int]:
     return window.rect
 
 
+def _is_wgc_border_toggle_unsupported(exc: BaseException) -> bool:
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        message = str(current).casefold()
+        if "capture border" in message and "not supported" in message:
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def _wgc_draw_border_attempts(draw_border: bool | None) -> tuple[bool | None, ...]:
+    if draw_border is None:
+        return (None,)
+    return (draw_border, None)
+
+
 class _WgcWindowSession:
-    def __init__(self, hwnd: int, timeout_seconds: float, update_interval_ms: int):
+    def __init__(self, hwnd: int, timeout_seconds: float, update_interval_ms: int, draw_border: bool | None):
         self.hwnd = int(hwnd)
         self.update_interval_ms = int(update_interval_ms)
+        self.requested_draw_border = draw_border
+        self.draw_border: bool | None = draw_border
         self._condition = threading.Condition()
         self._frame: Any | None = None
         self._closed = False
@@ -202,9 +248,35 @@ class _WgcWindowSession:
         except ImportError as exc:
             raise RuntimeError("windows-capture is required for screen.capture_backend='wgc'") from exc
 
+        for candidate_draw_border in _wgc_draw_border_attempts(draw_border):
+            self._reset_state()
+            try:
+                self._start_capture(WindowsCapture, np, Image, candidate_draw_border, timeout_seconds)
+                self.draw_border = candidate_draw_border
+                break
+            except BaseException as exc:
+                self.stop()
+                if candidate_draw_border is not None and _is_wgc_border_toggle_unsupported(exc):
+                    continue
+                raise
+
+    def _reset_state(self) -> None:
+        with self._condition:
+            self._frame = None
+            self._closed = False
+            self._error = None
+
+    def _start_capture(
+        self,
+        WindowsCapture: Any,
+        np: Any,
+        Image: Any,
+        draw_border: bool | None,
+        timeout_seconds: float,
+    ) -> None:
         capture = WindowsCapture(
             cursor_capture=False,
-            draw_border=False,
+            draw_border=draw_border,
             minimum_update_interval=self.update_interval_ms,
             window_hwnd=self.hwnd,
         )
@@ -232,7 +304,11 @@ class _WgcWindowSession:
                 self._condition.notify_all()
 
         self._control = capture.start_free_threaded()
-        self.frame(timeout_seconds)
+        try:
+            self.frame(timeout_seconds)
+        except BaseException:
+            self.stop()
+            raise
 
     @property
     def closed(self) -> bool:

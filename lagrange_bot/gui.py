@@ -25,9 +25,11 @@ from PIL import Image, ImageDraw, ImageTk
 from .capture_backends import capture_window_client, stop_wgc_sessions
 from .config import BotConfig
 from .decision import DeckPolicy
+from .local_calibration import save_local_calibration
 from .models import Action, ActionType, GameState, Phase
 from .vision import (
     ScreenReader,
+    calibrate_layout_offset,
     card_title_rect_for_slot,
     crop_image,
     normalize_capture_image,
@@ -97,6 +99,7 @@ def _state_to_dict(state: GameState) -> dict[str, Any]:
         "cost": state.cost,
         "capture_origin": state.capture_origin,
         "capture_scale": state.capture_scale,
+        "layout_offset_x": state.layout_offset_x,
         "layout_offset_y": state.layout_offset_y,
         "hand_slot_playable": state.hand_slot_playable,
         "visible_cards": [
@@ -322,13 +325,13 @@ def _offset_rect(rect: tuple[int, int, int, int], dx: int = 0, dy: int = 0) -> t
 
 
 def _hand_slots_for_state(config: BotConfig, state: GameState):
-    if not state.layout_offset_y:
+    if not state.layout_offset_x and not state.layout_offset_y:
         return config.hand_slots
     return [
         slot.__class__(
             name=slot.name,
-            rect=_offset_rect(slot.rect, 0, state.layout_offset_y),
-            click=(slot.click[0], slot.click[1] + state.layout_offset_y),
+            rect=_offset_rect(slot.rect, state.layout_offset_x, state.layout_offset_y),
+            click=(slot.click[0] + state.layout_offset_x, slot.click[1] + state.layout_offset_y),
         )
         for slot in config.hand_slots
     ]
@@ -362,11 +365,15 @@ def annotate_image(
         draw.rectangle(_rect_xyxy(slot.rect), outline="#8b5cf6", width=2)
         draw.text((slot.rect[0] + 4, slot.rect[1] + 4), slot.name, fill="#8b5cf6")
 
-    if state.layout_offset_y:
+    if state.layout_offset_x or state.layout_offset_y:
         for slot in config.hand_slots:
-            shifted = _offset_rect(slot.rect, 0, state.layout_offset_y)
+            shifted = _offset_rect(slot.rect, state.layout_offset_x, state.layout_offset_y)
             draw.rectangle(_rect_xyxy(shifted), outline="#22c55e", width=2)
-            draw.text((shifted[0] + 4, shifted[1] + 4), f"{slot.name}+{state.layout_offset_y}", fill="#22c55e")
+            draw.text(
+                (shifted[0] + 4, shifted[1] + 4),
+                f"{slot.name}+{state.layout_offset_x},{state.layout_offset_y}",
+                fill="#22c55e",
+            )
 
     for skill in config.skills:
         if skill.rect:
@@ -461,6 +468,69 @@ def validate_assets(config: BotConfig) -> dict[str, Any]:
         )
 
     return {"missing": missing, "assets": assets}
+
+
+def _select_stable_calibration_sample(
+    samples: list[dict[str, Any]],
+    *,
+    required_count: int,
+    tolerance: int,
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    valid = [sample for sample in samples if sample.get("ok")]
+    required_count = max(1, int(required_count))
+    tolerance = max(0, int(tolerance))
+    if not valid:
+        best_sample = max(
+            samples,
+            key=lambda item: float(item.get("result", {}).get("score", 0.0)),
+            default=None,
+        )
+        return best_sample, {
+            "ok": False,
+            "reason": "no_sample_reached_min_score",
+            "required_count": required_count,
+            "tolerance": tolerance,
+            "stable_count": 0,
+        }
+
+    best_group: list[dict[str, Any]] = []
+    for anchor in valid:
+        anchor_result = anchor.get("result", {})
+        anchor_x = int(anchor_result.get("offset_x", 0))
+        anchor_y = int(anchor_result.get("offset_y", 0))
+        group = []
+        for sample in valid:
+            result = sample.get("result", {})
+            offset_x = int(result.get("offset_x", 0))
+            offset_y = int(result.get("offset_y", 0))
+            if abs(offset_x - anchor_x) <= tolerance and abs(offset_y - anchor_y) <= tolerance:
+                group.append(sample)
+        group.sort(key=lambda item: float(item.get("result", {}).get("score", 0.0)), reverse=True)
+        if (
+            len(group) > len(best_group)
+            or (
+                len(group) == len(best_group)
+                and group
+                and sum(float(item.get("result", {}).get("score", 0.0)) for item in group)
+                > sum(float(item.get("result", {}).get("score", 0.0)) for item in best_group)
+            )
+        ):
+            best_group = group
+
+    selected = best_group[0] if best_group else valid[0]
+    selected_result = selected.get("result", {})
+    stable = len(best_group) >= required_count
+    return selected, {
+        "ok": stable,
+        "reason": "stable" if stable else "insufficient_stable_samples",
+        "required_count": required_count,
+        "tolerance": tolerance,
+        "stable_count": len(best_group),
+        "offset_x": int(selected_result.get("offset_x", 0)),
+        "offset_y": int(selected_result.get("offset_y", 0)),
+        "sample_indexes": [int(item.get("frame_index", 0)) for item in best_group],
+        "scores": [float(item.get("result", {}).get("score", 0.0)) for item in best_group],
+    }
 
 
 def capture_window(window: WindowInfo, config: BotConfig) -> tuple[Image.Image, tuple[int, int], dict[str, int]]:
@@ -563,6 +633,12 @@ class LagrangeTestGui(tk.Tk):
             style="Accent.TButton",
         )
         self.continuous_button.grid(row=0, column=2)
+        self.calibration_button = ttk.Button(
+            controls,
+            text="自动校准",
+            command=self.auto_calibrate_clicked,
+        )
+        self.calibration_button.grid(row=0, column=3, padx=(6, 0))
         self.hand_training_button = ttk.Button(
             controls,
             text="开始手牌采集",
@@ -586,6 +662,7 @@ class LagrangeTestGui(tk.Tk):
 
         self.time_value_var = tk.StringVar(value="--")
         self.cost_value_var = tk.StringVar(value="--")
+        self.calibration_value_var = tk.StringVar(value="未完成")
         self.phase_value_var = tk.StringVar(value="等待开始")
         self.last_action_var = tk.StringVar(value="自动放置手牌和技能释放已开启")
         self.hand_card_vars: list[dict[str, tk.StringVar]] = []
@@ -597,8 +674,10 @@ class LagrangeTestGui(tk.Tk):
         metrics.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
         metrics.columnconfigure(0, weight=1)
         metrics.columnconfigure(1, weight=1)
+        metrics.columnconfigure(2, weight=1)
         self._build_metric_card(metrics, 0, "时间", self.time_value_var, "s")
         self._build_metric_card(metrics, 1, "费用", self.cost_value_var, "")
+        self._build_metric_card(metrics, 2, "校准", self.calibration_value_var, "")
 
         hand_section = ttk.Frame(dashboard, style="Panel.TFrame", padding=6)
         hand_section.grid(row=1, column=0, sticky="nsew", padx=(0, 4))
@@ -946,6 +1025,8 @@ class LagrangeTestGui(tk.Tk):
 
     def _parse_time_override(self) -> float | None:
         phase = self.phase_override_var.get().strip()
+        if not phase or phase == "auto":
+            return None
         if phase == "placement":
             return 76.0
         if phase == "extra_place":
@@ -989,7 +1070,7 @@ class LagrangeTestGui(tk.Tk):
                 "label": label,
                 "args": [str(arg) for arg in args],
                 "config_path": self.config_path_var.get(),
-                "time_override": self.time_var.get(),
+                "time_override": self._parse_time_override(),
                 "phase_override": self.phase_override_var.get(),
                 "cost_override_enabled": self.cost_override_enabled.get(),
                 "cost_override": self.cost_override_var.get(),
@@ -1014,6 +1095,123 @@ class LagrangeTestGui(tk.Tk):
         config = self._load_config()
         report = validate_assets(config)
         return "assets", report, None
+
+    def auto_calibrate_clicked(self) -> None:
+        try:
+            window = self._continuous_window if self.continuous_window_var.get() else self._selected_window()
+            if window is None:
+                window = self._selected_window()
+        except Exception as exc:
+            self.logger.event("auto_calibration_select_error", {"error": str(exc)})
+            messagebox.showinfo("需要窗口", str(exc))
+            return
+        if self.continuous_window_var.get():
+            self._stop_continuous_window("auto_calibration")
+        self.calibration_value_var.set("进行中")
+        self.logger.event(
+            "auto_calibration_clicked",
+            {
+                "hwnd": window.hwnd,
+                "title": window.title,
+                "client_capture_rect": window.client_capture_rect,
+            },
+        )
+        if not self._run_worker("自动校准", self._auto_calibration_worker, window):
+            self.calibration_value_var.set("忙碌")
+
+    def _auto_calibration_worker(self, window: WindowInfo) -> tuple[str, dict[str, Any], Image.Image | None]:
+        config = self._load_config()
+        window = get_window(window.hwnd)
+        focus_window(window.hwnd)
+        frame_count = max(1, int(config.screen.get("calibration_sample_frames", 4)))
+        interval_ms = max(0, int(config.screen.get("calibration_sample_interval_ms", 250)))
+        stable_required = max(1, int(config.screen.get("calibration_stable_required_frames", min(2, frame_count))))
+        stable_tolerance = max(0, int(config.screen.get("calibration_stable_tolerance_px", 4)))
+
+        samples: list[dict[str, Any]] = []
+        sample_images: dict[int, Image.Image] = {}
+        for frame_index in range(1, frame_count + 1):
+            window = get_window(window.hwnd)
+            capture_started = time.perf_counter()
+            image, origin, monitor = capture_window(window, config)
+            capture_elapsed_ms = round((time.perf_counter() - capture_started) * 1000, 1)
+            image, scale = normalize_capture_image(image, config)
+            raw_path = self.logger.save_image(f"calibration_raw_{frame_index}_{window.title}", image)
+            result = calibrate_layout_offset(config, image)
+            samples.append(
+                {
+                    "frame_index": frame_index,
+                    "ok": bool(result.get("ok")),
+                    "result": result,
+                    "raw_image": str(raw_path.resolve()),
+                    "source": {
+                        "hwnd": window.hwnd,
+                        "title": window.title,
+                        "client_capture_rect": window.client_capture_rect,
+                        "capture_monitor": monitor,
+                        "capture_origin": origin,
+                        "capture_scale": scale,
+                        "capture_ms": capture_elapsed_ms,
+                    },
+                }
+            )
+            sample_images[frame_index] = image
+            if frame_index < frame_count and interval_ms > 0:
+                time.sleep(interval_ms / 1000.0)
+
+        selected_sample, stability = _select_stable_calibration_sample(
+            samples,
+            required_count=stable_required,
+            tolerance=stable_tolerance,
+        )
+        selected_sample = selected_sample or samples[-1]
+        result = selected_sample.get("result", {})
+        source = selected_sample.get("source", {})
+        image = sample_images.get(int(selected_sample.get("frame_index", 0))) or next(iter(sample_images.values()))
+        final_ok = bool(selected_sample.get("ok")) and bool(stability.get("ok"))
+        calibration = {
+            "offset_x": int(result.get("offset_x", 0)),
+            "offset_y": int(result.get("offset_y", 0)),
+            "score": float(result.get("score", 0.0)),
+            "min_score": float(result.get("min_score", 0.0)),
+            "source": "hand_bar_scan_multi_sample",
+            "sample_count": frame_count,
+            "stable_count": int(stability.get("stable_count", 0)),
+            "stable_required": stable_required,
+            "stable_tolerance_px": stable_tolerance,
+            "client_size": [
+                int(source.get("client_capture_rect", window.client_capture_rect)[2]),
+                int(source.get("client_capture_rect", window.client_capture_rect)[3]),
+            ],
+            "capture_scale": list(source.get("capture_scale", (1.0, 1.0))),
+        }
+        saved_path: Path | None = None
+        if final_ok:
+            saved_path = save_local_calibration(config, calibration)
+
+        annotated = image.convert("RGB").copy()
+        draw = ImageDraw.Draw(annotated)
+        for slot in config.hand_slots:
+            shifted = _offset_rect(
+                slot.rect,
+                int(result.get("offset_x", 0)),
+                int(result.get("offset_y", 0)),
+            )
+            draw.rectangle(_rect_xyxy(shifted), outline="#22c55e" if final_ok else "#ef4444", width=3)
+            draw.text((shifted[0] + 4, shifted[1] + 4), slot.name, fill="#22c55e" if final_ok else "#ef4444")
+        annotated_path = self.logger.save_image(f"calibration_annotated_{window.title}", annotated)
+        payload = {
+            "ok": final_ok,
+            "result": result,
+            "stability": stability,
+            "samples": samples,
+            "calibration": calibration,
+            "saved_path": str(saved_path.resolve()) if saved_path else None,
+            "raw_image": selected_sample.get("raw_image"),
+            "annotated_image": str(annotated_path.resolve()),
+            "source": source,
+        }
+        return "calibration", payload, annotated
 
     def detect_image_clicked(self) -> None:
         image_path = self.image_path_var.get().strip()
@@ -1829,9 +2027,10 @@ class LagrangeTestGui(tk.Tk):
         continuous_options = self._continuous_screen_options(config) if continuous_active else None
         read_started = time.perf_counter()
         phase_override_value = self._phase_override_value()
+        time_override = self._parse_time_override()
         state = reader.read_state_from_image(
             image,
-            now_seconds=self._parse_time_override(),
+            now_seconds=time_override,
             phase_override=phase_override_value,
             capture_origin=origin,
             capture_scale=capture_scale,
@@ -1876,7 +2075,7 @@ class LagrangeTestGui(tk.Tk):
                 "last_delay_ms": self._continuous_last_delay_ms if continuous_active else None,
             },
             "overrides": {
-                "time": self.time_var.get().strip() or None,
+                "time": time_override,
                 "phase": phase_override,
                 "cost_enabled": self.cost_override_enabled.get(),
                 "cost": self.cost_override_var.get().strip() if self.cost_override_enabled.get() else None,
@@ -1885,7 +2084,9 @@ class LagrangeTestGui(tk.Tk):
             "screen_timer_seconds": reader.last_match_timer_seconds,
             "raw_timer_seconds": reader.last_raw_timer_seconds,
             "vision_diagnostics": {
+                "layout_offset_x": state.layout_offset_x,
                 "layout_offset_y": state.layout_offset_y,
+                "local_calibration": reader.last_local_calibration,
                 "layout_scores": reader.last_layout_scores,
                 "read_state_timings": reader.last_read_state_timings,
                 "timer_attempts": reader.last_timer_attempts,
@@ -2394,7 +2595,7 @@ class LagrangeTestGui(tk.Tk):
         }
         slots: list[dict[str, Any]] = []
         reader_for_rects = ScreenReader(config)
-        hand_slots = reader_for_rects._hand_slots_for_offset(state.layout_offset_y)
+        hand_slots = _hand_slots_for_state(config, state)
         for slot in hand_slots:
             slot_path = training_dir / "slots" / f"{stem}_{_safe_file_stem(slot.name)}.png"
             title_path = training_dir / "titles" / f"{stem}_{_safe_file_stem(slot.name)}_title.png"
@@ -2414,13 +2615,13 @@ class LagrangeTestGui(tk.Tk):
             )
 
         timer_paths: list[dict[str, Any]] = []
-        for index, rect in enumerate(reader_for_rects._timer_rects_for_offset(state.layout_offset_y)):
+        for index, rect in enumerate(reader_for_rects._timer_rects_for_offset(0)):
             path = training_dir / "timer" / f"{stem}_timer_{index}.png"
             crop_image(image, rect).save(path)
             timer_paths.append({"rect": rect, "image": str(path.resolve())})
 
         command_paths: list[dict[str, Any]] = []
-        for name, rect in reader_for_rects._cost_rects_for_offset(state.layout_offset_y):
+        for name, rect in reader_for_rects._cost_rects_for_offset(0):
             path = training_dir / "command" / f"{stem}_command_{name}.png"
             crop_image(image, rect).save(path)
             command_paths.append({"name": name, "rect": rect, "image": str(path.resolve())})
@@ -2544,6 +2745,35 @@ class LagrangeTestGui(tk.Tk):
             self.status_var.set("素材校验完成")
             return
 
+        if result_type == "calibration":
+            self.logger.event("auto_calibration_result", payload)
+            calibration = payload.get("calibration") if isinstance(payload.get("calibration"), dict) else {}
+            offset_x = calibration.get("offset_x", 0)
+            offset_y = calibration.get("offset_y", 0)
+            score = calibration.get("score", 0.0)
+            min_score = calibration.get("min_score", 0.0)
+            if payload.get("ok"):
+                self.calibration_value_var.set(f"完成 {offset_x},{offset_y}")
+                self.summary_var.set(f"自动校准完成: offset=({offset_x},{offset_y}) score={score:.2f}")
+                self.status_var.set("自动校准完成")
+            else:
+                stability = payload.get("stability") if isinstance(payload.get("stability"), dict) else {}
+                reason = str(stability.get("reason") or "score_below_threshold")
+                stable_count = stability.get("stable_count", 0)
+                required_count = stability.get("required_count", 0)
+                self.calibration_value_var.set("失败")
+                if reason == "insufficient_stable_samples":
+                    self.summary_var.set(
+                        f"自动校准失败: 样本不稳定 {stable_count}/{required_count}, score={score:.2f}"
+                    )
+                else:
+                    self.summary_var.set(f"自动校准失败: score={score:.2f} < {min_score:.2f}")
+                self.status_var.set("自动校准失败")
+            if image and update_preview:
+                self._last_annotated = image
+                self._display_image(image)
+            return
+
         action = payload["action"]
         live_play_card = payload.get("live_play_card") if isinstance(payload.get("live_play_card"), dict) else None
         live_skill = payload.get("live_skill") if isinstance(payload.get("live_skill"), dict) else None
@@ -2564,6 +2794,13 @@ class LagrangeTestGui(tk.Tk):
         self.time_value_var.set(str(state.get("time", "--")))
         self.cost_value_var.set(str(state.get("cost", "--")))
         self.phase_value_var.set(f"阶段: {state.get('phase', '--')}")
+        calibration = payload.get("vision_diagnostics", {}).get("local_calibration")
+        if isinstance(calibration, dict):
+            self.calibration_value_var.set(
+                f"完成 {calibration.get('offset_x', 0)},{calibration.get('offset_y', 0)}"
+            )
+        elif self.calibration_value_var.get() != "进行中":
+            self.calibration_value_var.set("未完成")
 
         visible_by_slot = {str(item.get("slot")): item for item in state.get("visible_cards", [])}
         playable = state.get("hand_slot_playable", {})

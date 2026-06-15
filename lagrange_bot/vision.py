@@ -10,6 +10,7 @@ from typing import Any
 
 from .capture_backends import capture_monitor_for_rect, capture_region as _screen_capture_region, capture_window_client
 from .config import BotConfig
+from .local_calibration import load_local_calibration
 from .models import BattlefieldTarget, GameState, MatchResult, Phase, SkillState, SlotConfig, VisibleCard
 
 
@@ -134,6 +135,7 @@ class ScreenReader:
         self.last_capture_scale: tuple[float, float] = (1.0, 1.0)
         self.last_match_timer_seconds: float | None = None
         self.last_raw_timer_seconds: float | None = None
+        self.last_layout_offset_x: int = 0
         self.last_layout_offset_y: int = 0
         self.last_layout_scores: dict[int, float] = {}
         self.last_read_state_timings: dict[str, float] = {}
@@ -143,6 +145,12 @@ class ScreenReader:
         self.last_battlefield_diagnostics: dict[str, Any] = {}
         self.last_timer_read_source: str | None = None
         self.last_timer_stabilizer: dict[str, Any] = {}
+        self.local_calibration: dict[str, Any] | None = (
+            load_local_calibration(config)
+            if bool(config.screen.get("use_local_calibration", True))
+            else None
+        )
+        self.last_local_calibration: dict[str, Any] | None = self.local_calibration
         self._card_title_templates: dict[str, list[str]] | None = None
         self._card_title_templates_key: tuple[Any, ...] | None = None
         self._card_templates: dict[str, str] | None = None
@@ -228,6 +236,8 @@ class ScreenReader:
             step_started = time.perf_counter()
             layout_offset_y = self._select_layout_offset_y(image)
             timings["layout_ms"] = round((time.perf_counter() - step_started) * 1000, 1)
+            calibrated_offset_x, calibrated_offset_y = self._calibrated_offset(layout_offset_y)
+            self.last_layout_offset_x = calibrated_offset_x
 
             step_started = time.perf_counter()
             timer_seconds = self._read_match_timer_seconds(image, layout_offset_y)
@@ -293,7 +303,8 @@ class ScreenReader:
                 skills=skills,
                 battlefield_targets=battlefield_targets,
                 hand_slot_playable=hand_slot_playable,
-                layout_offset_y=layout_offset_y,
+                layout_offset_x=calibrated_offset_x,
+                layout_offset_y=calibrated_offset_y,
                 capture_origin=capture_origin,
                 capture_scale=capture_scale,
             )
@@ -391,6 +402,33 @@ class ScreenReader:
             return Phase.EXTRA_PLACE
         return Phase.BATTLE
 
+    def _calibrated_offset(self, offset_y: int = 0) -> tuple[int, int]:
+        calibration = self.local_calibration
+        if not calibration:
+            return 0, int(offset_y)
+        try:
+            offset_x = int(calibration.get("offset_x", 0))
+            base_offset_y = int(calibration.get("offset_y", 0))
+        except (TypeError, ValueError):
+            return 0, int(offset_y)
+        return offset_x, base_offset_y + int(offset_y)
+
+    def _calibrated_rect(
+        self,
+        rect: tuple[int, int, int, int],
+        offset_y: int = 0,
+    ) -> tuple[int, int, int, int]:
+        offset_x, total_offset_y = self._calibrated_offset(offset_y)
+        return _offset_rect(rect, offset_x, total_offset_y)
+
+    def _calibrated_point(
+        self,
+        point: tuple[int, int],
+        offset_y: int = 0,
+    ) -> tuple[int, int]:
+        offset_x, total_offset_y = self._calibrated_offset(offset_y)
+        return _offset_point(point, offset_x, total_offset_y)
+
     def _read_match_timer_seconds(self, image: Any, offset_y: int = 0) -> float | None:
         self.last_timer_read_source = None
         if not bool(self.config.phase.get("read_screen_timer", True)):
@@ -452,8 +490,7 @@ class ScreenReader:
                 return 0
         if mode == "digit_templates":
             rect = tuple(self.config.cost.get("rect", [0, 0, 0, 0]))
-            if offset_y:
-                rect = _offset_rect(rect, 0, offset_y)
+            rect = self._calibrated_rect(rect, 0)
             digits_dir = self.config.root / self.config.cost.get("digit_templates_dir", "templates/digits")
             return read_number_by_digit_templates(image_source, rect, digits_dir, self.config.digit_threshold())
         if mode == "command_value":
@@ -467,6 +504,13 @@ class ScreenReader:
         raise RuntimeError(f"unsupported cost mode: {mode}")
 
     def _select_layout_offset_y(self, image: Any) -> int:
+        if self.local_calibration:
+            self.last_layout_offset_y = 0
+            self.last_layout_scores = {
+                0: self._score_hand_layout(image, 0),
+            }
+            return 0
+
         offsets = self.config.screen.get("layout_offset_y_candidates", [0])
         if not isinstance(offsets, list) or not offsets:
             offsets = [0]
@@ -528,13 +572,14 @@ class ScreenReader:
         return score
 
     def _hand_slots_for_offset(self, offset_y: int) -> list[SlotConfig]:
-        if offset_y == 0:
+        offset_x, total_offset_y = self._calibrated_offset(offset_y)
+        if offset_x == 0 and total_offset_y == 0:
             return self.config.hand_slots
         return [
             replace(
                 slot,
-                rect=_offset_rect(slot.rect, 0, offset_y),
-                click=_offset_point(slot.click, 0, offset_y),
+                rect=_offset_rect(slot.rect, offset_x, total_offset_y),
+                click=_offset_point(slot.click, offset_x, total_offset_y),
             )
             for slot in self.config.hand_slots
         ]
@@ -542,12 +587,13 @@ class ScreenReader:
     def _reserve_slot_for_offset(self, offset_y: int) -> SlotConfig | None:
         if not self.config.reserve_slot:
             return None
-        if offset_y == 0:
+        offset_x, total_offset_y = self._calibrated_offset(offset_y)
+        if offset_x == 0 and total_offset_y == 0:
             return self.config.reserve_slot
         return replace(
             self.config.reserve_slot,
-            rect=_offset_rect(self.config.reserve_slot.rect, 0, offset_y),
-            click=_offset_point(self.config.reserve_slot.click, 0, offset_y),
+            rect=_offset_rect(self.config.reserve_slot.rect, offset_x, total_offset_y),
+            click=_offset_point(self.config.reserve_slot.click, offset_x, total_offset_y),
         )
 
     def _timer_rects_for_offset(self, offset_y: int = 0) -> list[tuple[int, int, int, int]]:
@@ -579,11 +625,11 @@ class ScreenReader:
             except Exception:
                 continue
             for dy in y_offsets:
-                rects.append(_offset_rect(base, 0, dy))
+                rects.append(self._calibrated_rect(base, dy))
             if extra_candidates and base[1] <= 30:
                 for top in (0, 2, 4, 8):
-                    rects.append((base[0], top, base[2], base[3]))
-                    rects.append((max(0, base[0] - 30), top, base[2], base[3]))
+                    rects.append(self._calibrated_rect((base[0], top, base[2], base[3]), 0))
+                    rects.append(self._calibrated_rect((max(0, base[0] - 30), top, base[2], base[3]), 0))
 
         return _unique_rects(rects)
 
@@ -599,7 +645,7 @@ class ScreenReader:
                 rect = tuple(int(v) for v in rect_value)
             except Exception:
                 continue
-            ordered.append((name, rect))
+            ordered.append((name, self._calibrated_rect(rect, 0)))
 
         seen: set[tuple[int, int, int, int]] = set()
         unique: list[tuple[str, tuple[int, int, int, int]]] = []
@@ -936,6 +982,11 @@ class ScreenReader:
             if skill.active and skill.template
         }
 
+    def _skill_rect(self, skill: Any) -> tuple[int, int, int, int] | None:
+        if not skill.rect:
+            return None
+        return self._calibrated_rect(skill.rect, 0)
+
     def _read_skills(self, image: Any, now_seconds: float) -> list[SkillState]:
         states: list[SkillState] = []
         skill_templates = self._get_skill_templates()
@@ -953,10 +1004,11 @@ class ScreenReader:
             confidence = 0.0
             ready_mode = skill.ready_mode
             diagnostics: dict[str, Any] = {"identity_source": "configured_slot", "ready_mode": ready_mode}
-            if skill.template and skill.rect:
+            skill_rect = self._skill_rect(skill)
+            if skill.template and skill_rect:
                 match = best_template_match(
                     image=image_source,
-                    search_rect=skill.rect,
+                    search_rect=skill_rect,
                     templates={skill.id: skill.template},
                     threshold=0.0,
                 )
@@ -964,14 +1016,14 @@ class ScreenReader:
                 diagnostics["template_score"] = round(confidence, 4)
                 best_match = best_template_match(
                     image=image_source,
-                    search_rect=skill.rect,
+                    search_rect=skill_rect,
                     templates=skill_templates,
                     threshold=0.0,
                 )
                 if best_match:
                     diagnostics["best_template_id"] = best_match.item_id
                     diagnostics["best_template_score"] = round(max(0.0, best_match.confidence), 4)
-                visual_diag = skill_slot_visual_diagnostics(image_source, skill.rect)
+                visual_diag = skill_slot_visual_diagnostics(image_source, skill_rect)
                 diagnostics.update(visual_diag)
                 if ready_mode in {"slot_visual_and_cooldown", "cooldown_only"}:
                     slot_visual_ready = skill_slot_looks_ready(self.config, visual_diag)
@@ -986,7 +1038,25 @@ class ScreenReader:
 
             states.append(
                 SkillState(
-                    skill=skill,
+                    skill=(
+                        replace(
+                            skill,
+                            rect=skill_rect,
+                            click=self._calibrated_point(skill.click, 0) if skill.click else None,
+                            select_click=(
+                                self._calibrated_point(skill.select_click, 0)
+                                if skill.select_click
+                                else None
+                            ),
+                            target_click=(
+                                self._calibrated_point(skill.target_click, 0)
+                                if skill.target_click
+                                else None
+                            ),
+                        )
+                        if skill_rect or self.local_calibration
+                        else skill
+                    ),
                     ready=cooldown_ready and visual_ready,
                     confidence=confidence,
                     seconds_since_cast=(
@@ -1051,7 +1121,8 @@ class ScreenReader:
         mode = str(item.get("search_mode", "configured_rect"))
         fallback_rect = tuple(int(v) for v in item.get("search_rect", [0, 0, 0, 0]))
         if mode != "historical_row":
-            return fallback_rect, {"mode": "configured_rect", "search_rect": list(fallback_rect)}
+            rect = self._calibrated_rect(fallback_rect, 0)
+            return rect, {"mode": "configured_rect", "search_rect": list(rect)}
 
         cache_key = json.dumps(
             {
@@ -1073,6 +1144,8 @@ class ScreenReader:
             return rect, {**json.loads(json.dumps(diagnostics, default=str)), "cached": True}
 
         rect, diagnostics = self._build_historical_battlefield_row_rect(target_id, item, fallback_rect)
+        rect = self._calibrated_rect(rect, 0)
+        diagnostics["search_rect"] = list(rect)
         self._battlefield_search_rect_cache[cache_key] = (rect, json.loads(json.dumps(diagnostics, default=str)))
         return rect, json.loads(json.dumps(diagnostics, default=str))
 
@@ -1173,6 +1246,68 @@ class ScreenReader:
 
     def _cached_image_source(self, image: Any) -> Any:
         return self._frame_cache_for(image) or image
+
+
+def calibrate_layout_offset(
+    config: BotConfig,
+    image: Any,
+    *,
+    search_x: int | None = None,
+    search_y: int | None = None,
+    step: int | None = None,
+    min_score: float | None = None,
+) -> dict[str, Any]:
+    """Find a persistent local ROI offset from the bottom hand UI."""
+    search_x = int(search_x if search_x is not None else config.screen.get("calibration_search_x", 80))
+    search_y = int(search_y if search_y is not None else config.screen.get("calibration_search_y", 80))
+    step = max(1, int(step if step is not None else config.screen.get("calibration_step", 4)))
+    min_score = float(min_score if min_score is not None else config.screen.get("calibration_min_score", 5.0))
+
+    cache = _FrameCache(image, 0)
+    candidates: list[dict[str, Any]] = []
+    best: dict[str, Any] | None = None
+    for dy in range(-search_y, search_y + 1, step):
+        for dx in range(-search_x, search_x + 1, step):
+            score = 0.0
+            slot_scores: list[float] = []
+            playable_slots = 0
+            for slot in config.hand_slots:
+                rect = _offset_rect(slot.rect, dx, dy)
+                roi = cache.rgb_roi(rect)
+                layout_score = hand_slot_layout_score_array(config, roi)
+                slot_scores.append(round(float(layout_score), 4))
+                score += layout_score * 0.4
+                if slot_looks_playable_array(config, roi):
+                    score += 1.5
+                    playable_slots += 1
+            candidate = {
+                "offset_x": dx,
+                "offset_y": dy,
+                "score": round(float(score), 4),
+                "slot_scores": slot_scores,
+                "playable_slots": playable_slots,
+            }
+            candidates.append(candidate)
+            if best is None or float(candidate["score"]) > float(best["score"]):
+                best = candidate
+
+    candidates.sort(key=lambda item: float(item["score"]), reverse=True)
+    best = best or {
+        "offset_x": 0,
+        "offset_y": 0,
+        "score": 0.0,
+        "slot_scores": [],
+        "playable_slots": 0,
+    }
+    return {
+        **best,
+        "ok": float(best["score"]) >= min_score,
+        "min_score": min_score,
+        "search_x": search_x,
+        "search_y": search_y,
+        "step": step,
+        "top_candidates": candidates[:8],
+    }
 
 
 def normalize_capture_image(image: Any, config: BotConfig) -> tuple[Any, tuple[float, float]]:

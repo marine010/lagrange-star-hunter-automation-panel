@@ -9,6 +9,7 @@ from pathlib import Path
 from PIL import Image
 
 from lagrange_bot.config import BotConfig
+from lagrange_bot.local_calibration import save_local_calibration
 from lagrange_bot.models import MatchResult
 from lagrange_bot.vision import (
     ScreenReader,
@@ -286,6 +287,49 @@ class VisionTests(unittest.TestCase):
 
         self.assertEqual(rects[0], (10, 20, 30, 40))
         self.assertNotIn((10, 75, 30, 40), rects)
+
+    def test_local_calibration_shifts_regions_without_polluting_hand_offset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_dir = root / "configs"
+            config_dir.mkdir()
+            path = config_dir / "sample_config.json"
+            data = json.loads(json.dumps(SAMPLE))
+            data["screen"]["use_local_calibration"] = True
+            data["phase"]["timer_rects"] = [[10, 20, 30, 40]]
+            data["cost"]["number_rect"] = [50, 60, 70, 80]
+            data["cost"]["rect"] = [90, 100, 30, 20]
+            data["skills"] = [
+                {
+                    "id": "skill_a",
+                    "name": "Skill A",
+                    "active": True,
+                    "cooldown_seconds": 0,
+                    "rect": [4, 5, 6, 7],
+                    "click": [8, 9],
+                    "conditions": {},
+                }
+            ]
+            path.write_text(json.dumps(data), encoding="utf-8")
+            config = BotConfig.load(path)
+            save_local_calibration(config, {"offset_x": 3, "offset_y": 5, "score": 9.0})
+
+            reader = ScreenReader(config)
+
+        self.assertEqual(reader.local_calibration["offset_x"], 3)
+        self.assertEqual(reader.local_calibration["offset_y"], 5)
+        self.assertEqual(reader._hand_slots_for_offset(55)[0].rect, (3, 60, 20, 20))
+        self.assertEqual(reader._hand_slots_for_offset(55)[0].click, (13, 70))
+        self.assertEqual(reader._timer_rects_for_offset(55)[0], (13, 25, 30, 40))
+        self.assertNotIn((13, 80, 30, 40), reader._timer_rects_for_offset(55))
+        self.assertEqual(
+            reader._cost_rects_for_offset(55),
+            [
+                ("number", (53, 65, 70, 80)),
+                ("area", (93, 105, 30, 20)),
+            ],
+        )
+        self.assertEqual(reader._skill_rect(reader.config.skills[0]), (7, 10, 6, 7))
 
     def test_match_timer_reads_live_timer_crop(self):
         root = Path(__file__).parent.parent

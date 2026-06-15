@@ -103,6 +103,7 @@ class GameState:
     skills: list[SkillState] = field(default_factory=list)
     battlefield_targets: list[BattlefieldTarget] = field(default_factory=list)
     hand_slot_playable: dict[str, bool] = field(default_factory=dict)
+    layout_offset_x: int = 0
     layout_offset_y: int = 0
     capture_origin: Point = (0, 0)
     capture_scale: tuple[float, float] = (1.0, 1.0)

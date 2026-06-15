@@ -42,6 +42,7 @@ def _state_to_dict(state):
         "cost": state.cost,
         "capture_origin": state.capture_origin,
         "capture_scale": state.capture_scale,
+        "layout_offset_x": state.layout_offset_x,
         "layout_offset_y": state.layout_offset_y,
         "hand_slot_playable": state.hand_slot_playable,
         "visible_cards": [
@@ -102,6 +103,23 @@ def _offset_action(action: Action, origin: Point, scale: tuple[float, float]) ->
         target_click=_offset_point(action.target_click, origin, scale),
         wait_seconds=action.wait_seconds,
     )
+
+
+def _offset_rect(rect: tuple[int, int, int, int], dx: int = 0, dy: int = 0) -> tuple[int, int, int, int]:
+    return rect[0] + dx, rect[1] + dy, rect[2], rect[3]
+
+
+def _hand_slots_for_state(config: BotConfig, state: GameState) -> list[SlotConfig]:
+    if not state.layout_offset_x and not state.layout_offset_y:
+        return config.hand_slots
+    return [
+        SlotConfig(
+            name=slot.name,
+            rect=_offset_rect(slot.rect, state.layout_offset_x, state.layout_offset_y),
+            click=(slot.click[0] + state.layout_offset_x, slot.click[1] + state.layout_offset_y),
+        )
+        for slot in config.hand_slots
+    ]
 
 
 def cmd_detect(args) -> int:
@@ -352,7 +370,7 @@ def cmd_collect_training(args) -> int:
                 ),
                 flush=True,
             )
-            hand_slots = reader._hand_slots_for_offset(state.layout_offset_y)
+            hand_slots = _hand_slots_for_state(config, state)
             slots: list[dict[str, object]] = []
             for slot in hand_slots:
                 slot_path = output_dir / "slots" / f"{stem}_{_safe_file_stem(slot.name)}.png"
@@ -372,13 +390,13 @@ def cmd_collect_training(args) -> int:
                 )
 
             timer_paths: list[dict[str, object]] = []
-            for index, rect in enumerate(reader._timer_rects_for_offset(state.layout_offset_y)):
+            for index, rect in enumerate(reader._timer_rects_for_offset(0)):
                 path = output_dir / "timer" / f"{stem}_timer_{index}.png"
                 crop_image(image, rect).save(path)
                 timer_paths.append({"rect": rect, "image": str(path)})
 
             command_paths: list[dict[str, object]] = []
-            for name, rect in reader._cost_rects_for_offset(state.layout_offset_y):
+            for name, rect in reader._cost_rects_for_offset(0):
                 path = output_dir / "command" / f"{stem}_command_{name}.png"
                 crop_image(image, rect).save(path)
                 command_paths.append({"name": name, "rect": rect, "image": str(path)})
@@ -630,7 +648,7 @@ def cmd_collect_battle(args) -> int:
                 )
 
             timer_paths: list[dict[str, object]] = []
-            for index, rect in enumerate(reader._timer_rects_for_offset(state.layout_offset_y)):
+            for index, rect in enumerate(reader._timer_rects_for_offset(0)):
                 path = output_dir / "timer" / f"{stem}_timer_{index}.png"
                 crop_image(image, rect).save(path)
                 timer_paths.append({"rect": rect, "image": str(path)})

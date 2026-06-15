@@ -22,9 +22,11 @@
 - 当前配置包含 4 个技能条目：
   `伤害提升`、`掩护承伤`、`多目标射击`、`防御情报同步`。其中前三个已配置自动释放策略，`防御情报同步` 当前为未启用/被动条目。
 - 客户端 GUI 支持在开始正式识别前手动选择本局卡组；开始后只会用选中卡组的手牌模板进行匹配，以降低运算压力和识别延迟。
+- 客户端 GUI 支持进入实际对局后执行“自动校准”，自动找到本机真实 UI 偏移，并把校准结果保存到本机 `logs/local_calibration/` 下，后续自动复用。
 - 其他手牌或技能需要先补充采集样本、识别模板和配置策略；未配置前不会可靠识别或自动执行。
 - 当前版本包含技能目标刷新 fallback 修复：
   当实时释放技能前无法确认足够数量的 CAS066 标签，但本次动作已经有配置或决策给出的兜底目标点时，程序会继续释放技能，并在日志中记录 `target_confirmation_unverified`。
+- 当前版本包含 WGC 截图兼容修复：默认不再强制切换系统捕获边框，避免部分 Windows 环境弹出 `Toggling the capture border is not supported`。
 
 ## 普通用户最快安装方式
 
@@ -44,7 +46,7 @@
 https://github.com/marine010/lagrange-star-hunter-automation-panel/releases/latest/download/LagrangeStarHunterSetup.exe
 ```
 
-如果固定链接暂时不可用，也可以进入 Releases 页面，下载带版本号的安装器，例如 `LagrangeStarHunterSetup-0.1.1.exe`。
+如果固定链接暂时不可用，也可以进入 Releases 页面，下载带版本号的安装器，例如 `LagrangeStarHunterSetup-0.1.3.exe`。
 
 如果 Windows 提示“已保护你的电脑”或“未知发布者”，这是因为安装器还没有做商业代码签名。确认来源是本仓库 Release 后，可以点击“更多信息” -> “仍要运行”继续安装。
 
@@ -133,14 +135,18 @@ python -m lagrange_bot.gui --config configs\star_hunter_1920.json
 
 1. 先打开游戏，并让游戏窗口保持可见。
 2. 回到 GUI 顶部的窗口下拉框，选择游戏窗口。
-3. 在“战前卡组”区域勾选本局使用的手牌；不确定时可以先点“全选”。
-4. 点击右上角“开始识别”。
-5. 开始后按钮会变成“停止识别”，界面会显示时间、费用、手牌、技能和最近动作。
-6. 想停止时，再点一次“停止识别”。
+3. 进入实际对局，等底部 4 张手牌完整出现。
+4. 点击“自动校准”，等校准状态显示“完成 x,y”。
+5. 在“战前卡组”区域勾选本局使用的手牌；不确定时可以先点“全选”。
+6. 点击右上角“开始识别”。
+7. 开始后按钮会变成“停止识别”，界面会显示时间、费用、校准状态、手牌、技能和最近动作。
+8. 想停止时，再点一次“停止识别”。
 
 注意事项：
 
 - 开始识别后，“战前卡组”区域会自动收起，这是正常现象。
+- “自动校准”必须在实际对局里使用，不要在活动大厅、匹配页或加载页使用。
+- 同一台电脑、同一分辨率、同一窗口大小，一般只需要校准成功一次。换显示器、改窗口大小、改 Windows 缩放后建议重新校准。
 - 当前配置按 1920x1080 布局调试，游戏窗口大小和布局差太多时，识别可能不准。
 - 程序默认会启用自动放置手牌和技能释放逻辑。使用前请确认只在授权测试环境中运行。
 - 每次运行的日志会写到 `logs/gui_sessions/`，排查问题时优先看最新的 session 文件夹。
@@ -238,9 +244,17 @@ python -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/s
 
 先确认游戏已经打开，并且不是最小化状态。然后点击窗口下拉框，它会刷新可见窗口列表。仍然找不到时，重启 GUI 和游戏再试。
 
+### 提示 Graphics capture error: Toggling the capture border is not supported
+
+这是 Windows Graphics Capture 在部分 Windows 版本、精简系统、远程桌面或显卡驱动环境下的兼容问题。旧版本会尝试关闭系统捕获边框，如果当前平台不支持这个 API，就会弹出运行错误。
+
+`v0.1.3` 及之后版本会自动降级为系统默认捕获边框继续运行。遇到这个错误时，请下载最新安装器并重新安装。
+
 ### GUI 打开了，但是识别不准
 
-当前公开配置主要按 `configs/star_hunter_1920.json` 的 1920x1080 布局调试。请尽量让游戏窗口使用相同布局，并先只观察识别结果，不要急着让它自动点击。日志和截图会保存在 `logs/gui_sessions/`，可以把最新 session 发给维护者排查。
+当前公开配置主要按 `configs/star_hunter_1920.json` 的 1920x1080 布局调试。请尽量让游戏窗口使用相同布局，进入实际对局后先点“自动校准”，看到校准状态完成后再开始识别。
+
+如果校准失败，通常是还在大厅/匹配页、底部手牌没有完整出现、窗口被遮挡，或窗口跨了显示器。日志和截图会保存在 `logs/gui_sessions/`，可以把最新 session 发给维护者排查。
 
 ## 数据采集界面
 
@@ -284,20 +298,20 @@ dist\LagrangeStarHunter\LagrangeStarHunter.exe
 如果要生成普通用户可一路下一步安装的安装器，需要安装 Inno Setup 6，然后运行：
 
 ```powershell
-& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion="0.1.1" packaging\inno\LagrangeStarHunter.iss
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion="0.1.3" packaging\inno\LagrangeStarHunter.iss
 ```
 
 生成结果在：
 
 ```text
-dist\installer\LagrangeStarHunterSetup-0.1.1.exe
+dist\installer\LagrangeStarHunterSetup-0.1.3.exe
 ```
 
 GitHub Actions 会在推送 `v*` 标签时自动构建 Windows 安装器，并把 `LagrangeStarHunterSetup-版本号.exe` 和固定文件名 `LagrangeStarHunterSetup.exe` 上传到 GitHub Release。发版示例：
 
 ```powershell
-git tag v0.1.2
-git push origin v0.1.2
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
 ## 仓库内容
